@@ -39,7 +39,7 @@ STAFF_PICK_CARD: <text>`;
 function parseSections(raw: string): MarketingContentResult {
   const get = (label: string) => {
     const match = raw.match(new RegExp(`${label}:\\s*([\\s\\S]*?)(?=\\n[A-Z_]+:|$)`));
-    return match ? match[1].trim() : "";
+    return match?.[1]?.trim() ?? "";
   };
   return {
     instagram: get("INSTAGRAM"),
