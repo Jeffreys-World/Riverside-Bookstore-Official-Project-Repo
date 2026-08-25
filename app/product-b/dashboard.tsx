@@ -51,7 +51,7 @@ export function Dashboard({
   const [justArrived, setJustArrived] = useState<Set<string>>(new Set());
   const [announcement, setAnnouncement] = useState("");
 
-  const ordersStatus = useRealtimeSubscription<OrderRow>(
+  const ordersStatus = useRealtimeSubscription(
     supabase,
     "product-b-orders",
     { event: "INSERT", schema: "public", table: "orders", filter: "order_status=eq.preorder" },
@@ -70,7 +70,7 @@ export function Dashboard({
     }
   );
 
-  const booksStatus = useRealtimeSubscription<BookRow>(
+  const booksStatus = useRealtimeSubscription(
     supabase,
     "product-b-books",
     { event: "UPDATE", schema: "public", table: "books" },

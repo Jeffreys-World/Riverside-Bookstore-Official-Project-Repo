@@ -16,11 +16,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type {
-  RealtimeChannel,
-  RealtimePostgresChangesPayload,
-  SupabaseClient,
-} from "@supabase/supabase-js";
+import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
+
+/**
+ * Deliberately untyped by row shape — callers cast `payload.new`/`payload.old`
+ * to their own row type inside onChange. Parameterizing this over T ran into
+ * @supabase/supabase-js's RealtimePostgresChangesPayload<T> requiring T to
+ * satisfy an index-signature constraint that plain row interfaces
+ * (OrderRow, BookRow) don't have, without adding one just to satisfy it.
+ */
+export interface RealtimeChangePayload {
+  eventType: "INSERT" | "UPDATE" | "DELETE";
+  new: Record<string, unknown>;
+  old: Record<string, unknown>;
+}
 
 export type RealtimeConnectionStatus =
   | "connecting"
@@ -38,11 +47,11 @@ export interface RealtimeChangesConfig {
   filter?: string;
 }
 
-export function useRealtimeSubscription<T extends Record<string, unknown>>(
+export function useRealtimeSubscription(
   client: SupabaseClient,
   channelName: string,
   config: RealtimeChangesConfig,
-  onChange: (payload: RealtimePostgresChangesPayload<T>) => void
+  onChange: (payload: RealtimeChangePayload) => void
 ): RealtimeConnectionStatus {
   const [status, setStatus] = useState<RealtimeConnectionStatus>("connecting");
   const backoffRef = useRef(INITIAL_BACKOFF_MS);
@@ -63,7 +72,7 @@ export function useRealtimeSubscription<T extends Record<string, unknown>>(
         .on(
           "postgres_changes" as never,
           { event, schema, table, filter } as never,
-          (payload: RealtimePostgresChangesPayload<T>) => onChangeRef.current(payload)
+          (payload: RealtimeChangePayload) => onChangeRef.current(payload)
         )
         .subscribe((subStatus) => {
           if (cancelled) return;
