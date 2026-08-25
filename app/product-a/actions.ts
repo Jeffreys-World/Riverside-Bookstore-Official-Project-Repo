@@ -7,7 +7,7 @@
  * app/api/live/execute-tool/route.ts's existing pattern for the same RPC.
  */
 
-import { getServiceRoleClient } from "@/lib/supabase";
+import { getServiceRoleClient } from "@/lib/supabase-server";
 import { createPreorderRequestSchema } from "@/types/schema";
 
 export type CreatePreorderResult =

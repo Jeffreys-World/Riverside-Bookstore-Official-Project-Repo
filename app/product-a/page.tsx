@@ -1,4 +1,4 @@
-import { getServerClient } from "@/lib/supabase";
+import { getServerClient } from "@/lib/supabase-server";
 import { PreorderForm } from "./preorder-form";
 
 export default async function ProductAPage() {

@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getServerClient } from "@/lib/supabase";
+import { getServerClient } from "@/lib/supabase-server";
 
 export async function signInAction(formData: FormData) {
   const email = String(formData.get("email") ?? "");

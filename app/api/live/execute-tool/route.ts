@@ -22,7 +22,7 @@
 
 import { NextResponse } from "next/server";
 import { createPreorderRequestSchema, type OrderStatus } from "@/types/schema";
-import { getServiceRoleClient } from "@/lib/supabase";
+import { getServiceRoleClient } from "@/lib/supabase-server";
 import { isMutatingTool, type MutatingToolName } from "@/lib/live-tools";
 
 interface ExecuteToolRequestBody {

@@ -1,14 +1,14 @@
 /**
- * lib/supabase.ts
+ * lib/supabase-server.ts
  *
- * Shared Supabase client factories. Every product uses these rather than
- * constructing its own client — this is the one place the anon key and
- * (server-only) service-role key are wired up, so the "service role key
- * must never reach client code" rule (Solo Build Plan, Section 2.3)
- * has exactly one place to be enforced correctly instead of four.
+ * Server-only Supabase client factories (Server Components, Server
+ * Actions, Route Handlers). Split out of the original lib/supabase.ts —
+ * see lib/supabase-browser.ts for why: this file imports next/headers,
+ * which breaks the build the moment any client component imports
+ * anything from the same file, even an unrelated export.
  */
 
-import { createBrowserClient, createServerClient } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
@@ -22,16 +22,6 @@ function getPublicEnv(): { url: string; anonKey: string } {
     );
   }
   return { url, anonKey };
-}
-
-/**
- * Use in Client Components ('use client'). RLS-scoped via the anon key —
- * this is the ONLY client type allowed in client-side code. Never import
- * getServiceRoleClient in a 'use client' file.
- */
-export function getBrowserClient() {
-  const { url, anonKey } = getPublicEnv();
-  return createBrowserClient(url, anonKey);
 }
 
 /**

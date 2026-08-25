@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getServerClient } from "@/lib/supabase";
+import { getServerClient } from "@/lib/supabase-server";
 import { Dashboard } from "./dashboard";
 
 export default async function ProductBPage() {

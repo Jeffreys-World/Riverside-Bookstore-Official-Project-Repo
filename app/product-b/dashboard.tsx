@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getBrowserClient } from "@/lib/supabase";
+import { getBrowserClient } from "@/lib/supabase-browser";
 import {
   evaluateStockStatus,
   sortBySeverity,
