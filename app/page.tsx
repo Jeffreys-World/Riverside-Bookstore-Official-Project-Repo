@@ -7,10 +7,10 @@
  */
 export default function Home() {
   const products = [
-    { href: "/product-a", label: "Customer Ordering & Loyalty App", status: "built — pending live verification" },
-    { href: "/product-b", label: "Staff Inventory & Ops Dashboard", status: "built — needs a seeded staff user (see TODOS.md)" },
-    { href: "/product-c", label: "Customer Support Chatbot", status: "not started" },
-    { href: "/product-d", label: "Marketing Content Generator", status: "not started" },
+    { href: "/product-a", label: "Customer Ordering & Loyalty App", status: "built and verified live" },
+    { href: "/product-b", label: "Staff Inventory & Ops Dashboard", status: "built and verified live" },
+    { href: "/product-c", label: "Customer Support Chatbot", status: "built — needs GOOGLE_API_KEY at runtime" },
+    { href: "/product-d", label: "Marketing Content Generator", status: "built — needs GOOGLE_API_KEY at runtime" },
   ];
 
   return (

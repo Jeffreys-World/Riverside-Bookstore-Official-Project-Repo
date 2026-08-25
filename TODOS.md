@@ -38,6 +38,14 @@ the sign-in page. Also unverified: this build had no Node.js/npm available to ru
 
 **Depends on:** None technically — could be built in parallel with A+B. This session's plan sequences A+B first for the live-sync payoff.
 
+**Status (2026-08-25 build):** Both built. Product C is a single-turn Gemini function-calling
+chatbot reusing the same `check_inventory` / `check_order_status` / `get_upcoming_events` tool
+declarations from `lib/live-tools.ts` — no new tool contracts invented, all reads already RLS-safe.
+Product D is plain `generateContent()` creative writing (Instagram/Newsletter/Staff Pick Card),
+no tools, no persistence. Neither touches the Live/voice WebSocket path — both are text-only via
+the new `lib/gemini.ts`. Built directly at the user's explicit request ("product c and d, now"),
+which superseded running the design-consultation TODO below first — see that entry's status.
+
 ---
 
 ## Run /design-consultation for a full design system before Products C+D
@@ -53,3 +61,9 @@ the sign-in page. Also unverified: this build had no Node.js/npm available to ru
 **Context:** Flagged during `/plan-design-review` on 2026-08-25. Pass 5 found zero `DESIGN.md` existed for this project; the bookstore-specific tokens chosen this session (serif display type for book titles, warm paper/ink palette, monospace for B's stock numbers) are a starting point for A+B, not a full system.
 
 **Depends on:** Products C/D reaching design/build stage.
+
+**Status (2026-08-25 build):** Skipped for now, deliberately — the user asked to build C+D
+directly rather than run this first. C and D reuse A+B's existing tokens (serif/sans/mono, warm
+palette) as-is, so they're visually consistent with the rest of the app, but neither got its own
+design pass (no dedicated review of chat UI patterns or content-generator layout specifically).
+Still worth running before this goes further than a coursework demo.

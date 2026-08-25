@@ -2,11 +2,13 @@
 
 ## Project Overview
 
-You are building the Riverside Books coursework project, solo. The current build phase covers
-Product A (Customer Ordering & Loyalty App) and Product B (Staff Inventory & Ops Dashboard),
-centered on cross-product live sync: a pre-order placed on A appears live on B via Supabase
-Realtime, no manual refresh. Products C (Customer Support Chatbot) and D (Marketing Content
-Generator) are deferred — see `TODOS.md`.
+You are building the Riverside Books coursework project, solo. All four products are built:
+Product A (Customer Ordering & Loyalty App) and Product B (Staff Inventory & Ops Dashboard) are
+centered on cross-product live sync — a pre-order placed on A appears live on B via Supabase
+Realtime, no manual refresh. Product C (Customer Support Chatbot) and Product D (Marketing
+Content Generator) are read-only/no-mutation text features built on Gemini's plain
+`generateContent()`, not the Live/voice WebSocket path. Remaining gaps (real staff auth, voice
+on Product A, a dedicated design pass for C/D) are tracked in `TODOS.md`.
 
 ## Strict Data Contract & Schema Constraints
 
