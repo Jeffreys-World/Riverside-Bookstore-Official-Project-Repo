@@ -56,7 +56,7 @@ export function Dashboard({
     "product-b-orders",
     { event: "INSERT", schema: "public", table: "orders", filter: "order_status=eq.preorder" },
     (payload) => {
-      const row = payload.new as OrderRow;
+      const row = payload.new as unknown as OrderRow;
       setOrders((prev) => [row, ...prev]);
       setAnnouncement(`New pre-order: ${row.order_id}`);
       setJustArrived((prev) => new Set(prev).add(row.order_id));
@@ -75,7 +75,7 @@ export function Dashboard({
     "product-b-books",
     { event: "UPDATE", schema: "public", table: "books" },
     (payload) => {
-      const row = payload.new as BookRow;
+      const row = payload.new as unknown as BookRow;
       setBooksByIsbn((prev) => ({ ...prev, [row.isbn]: row }));
     }
   );
