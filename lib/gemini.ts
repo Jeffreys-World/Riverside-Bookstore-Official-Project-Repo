@@ -12,7 +12,11 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-export const TEXT_MODEL = process.env.GEMINI_TEXT_MODEL ?? "gemini-2.0-flash";
+// [FIXED: gemini-2.0-flash was deprecated — verified live against Google's
+// API (404 "no longer available") on 2026-08-25. gemini-3.6-flash is the
+// confirmed-working replacement as of this build; Gemini model names
+// change frequently, so re-verify before assuming this is still current.
+export const TEXT_MODEL = process.env.GEMINI_TEXT_MODEL ?? "gemini-3.6-flash";
 
 let client: GoogleGenAI | null = null;
 
