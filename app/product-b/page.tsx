@@ -2,6 +2,11 @@ import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase-server";
 import { Dashboard } from "./dashboard";
 
+// Auth-gated and always reads live orders/stock — must never be
+// statically prerendered/cached. See app/product-a/page.tsx's comment on
+// why this needs to be explicit rather than auto-detected.
+export const dynamic = "force-dynamic";
+
 export default async function ProductBPage() {
   const supabase = getServerClient();
   const {
