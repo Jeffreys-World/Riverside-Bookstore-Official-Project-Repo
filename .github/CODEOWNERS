@@ -1,0 +1,21 @@
+# [SOLO] This project moved from a 4-person team to Jeffrey building all
+# four products solo on github.com/Jeffreys-World/Riverside-Book-Store-.
+#
+# With one person and one GitHub account, "Require review from Code
+# Owners" has no one else to request review from — this file no longer
+# enforces anything on its own. Kept as documentation of which paths
+# carry the widest blast radius in the repo (see Solo Build Plan,
+# Section 2.1 and Section 6) — treat a change to any of these as a
+# deliberate "step away, then re-read the diff cold" moment rather than
+# a normal commit, since there's no second reviewer to catch a mistake.
+#
+# If a collaborator ever joins this repo, replace @Jeffreys-World below
+# with their actual GitHub handle and turn on "Require review from Code
+# Owners" in Settings -> Branches to make this enforceable again.
+
+# Highest-conflict-risk, cross-product files:
+/types/schema.ts          @Jeffreys-World
+/supabase/                 @Jeffreys-World
+/components/                @Jeffreys-World
+/lib/live-tools.ts         @Jeffreys-World
+/lib/supabase.ts            @Jeffreys-World

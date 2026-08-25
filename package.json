@@ -1,0 +1,36 @@
+{
+  "name": "riverside-bookstore",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Shared foundation for the Riverside Bookstore 4-product suite (Products A-D), built solo by Jeffrey. Each product's own UI/routes live in app/product-{a,b,c,d}. This root contains only code every product depends on.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "next": "14.2.35",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@supabase/supabase-js": "2.45.4",
+    "@supabase/ssr": "0.5.1",
+    "@google/genai": "1.30.0",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "5.5.4",
+    "@types/node": "20.14.15",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "tailwindcss": "3.4.7",
+    "postcss": "8.4.40",
+    "autoprefixer": "10.4.19",
+    "vitest": "2.0.5",
+    "eslint": "8.57.0",
+    "eslint-config-next": "14.2.35"
+  }
+}

@@ -1,0 +1,25 @@
+# Next.js
+/.next/
+/out/
+
+# Dependencies
+/node_modules/
+
+# Env
+.env*.local
+.env
+
+# Build
+/build
+*.tsbuildinfo
+next-env.d.ts
+
+# Testing
+/coverage
+
+# OS
+.DS_Store
+
+# Supabase local dev
+/supabase/.branches
+/supabase/.temp

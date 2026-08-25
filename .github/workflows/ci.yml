@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  typecheck-lint-test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Runs across the whole repo, so a change in one product's
+      # app/product-x directory that breaks another product's usage of
+      # types/schema.ts (the highest-traffic shared file) fails here
+      # instead of surfacing after merge. [FIXED: the original plan
+      # relied entirely on manual PR review for this — see
+      # 4_Changes_Summary.md, item 12.]
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run build
