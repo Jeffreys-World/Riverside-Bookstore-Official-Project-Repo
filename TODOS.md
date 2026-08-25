@@ -14,6 +14,14 @@
 
 **Depends on:** Product B's dashboard existing first (built against the seeded-user gate).
 
+**Status (2026-08-25 build):** Product B's dashboard, sign-in page, and sign-in/sign-out server
+actions are built and gate on Supabase Auth session per `supabase/migrations/0003_orders_staff_select.sql`'s
+`authenticated`-only RLS policy. What's still missing: the seeded staff user itself — that requires
+creating one in your live Supabase project (Authentication -> Users -> Add user), which needs
+project access this build didn't have. Until that user exists, `/product-b` will only ever show
+the sign-in page. Also unverified: this build had no Node.js/npm available to run `npm run build`,
+`npm run typecheck`, or `npm test` locally — CI on push is the first real check.
+
 ---
 
 ## Build Products C (Customer Support Chatbot) and D (Marketing Content Generator)
