@@ -527,3 +527,62 @@ instead of introducing a second visual language.
   add-flows were built.
 - Someone with the Product B staff password should do one real pass through: the 5-tab dashboard,
   the Google Books search flow, and the new Description/Cover Asset URL fields.
+
+## Author bio field, events images, single-row header, and real staff RBAC
+
+**What:** Four changes from an updated task spec:
+1. `books.author_bio` (`0016_book_author_bio.sql`) — a distinct field from `description`, rendered
+   as its own "About the author" section in the product drawer. Staff-only, no Google Books
+   auto-fetch source for it (unlike description/cover_url), so it's always exactly what staff
+   typed or `null`. Verified live by inserting a book matching the spec's own example (Harper
+   Lee/*To Kill a Mockingbird*) and confirming the drawer renders both sections correctly.
+2. `author_events.image_url` (`0017_events_images.sql`) — added the column, backfilled the 3
+   existing events, and seeded 2 more (Madeline Miller, Brit Bennett — both already in the
+   `books` catalog) so Events reads as a fuller calendar. **Deviated from the spec's example
+   data**: it named a real competing bookstore (The Strand, with its real address) as the event
+   venue and used `"image_agent_tag_..."` placeholder strings instead of real URLs. Kept every
+   event at Riverside's own fictional address (matching the 3 rows 0015 already seeded, including
+   its own use of real authors' names) and used real, stable, deterministic Picsum URLs instead —
+   a real hosted asset, same external-image pattern `books.cover_url` already uses via Google
+   Books. Deliberately not a photo of the named author: using a real photo of a real person
+   without consent isn't something to do even for a coursework demo.
+3. Header restructured to the requested single-row 3-column grid (Books/Gifts/Events left,
+   logo centered, My Account/Support Center/cart right) at `sm:` and up. **Below `sm` this
+   overflowed badly** — screenshot-caught during this session's own verification pass: the cart
+   button and both account menus were pushed fully off-screen with no way to reach them. Fixed by
+   keeping the single row desktop-only and reverting to the previous stacked layout (centered logo
+   row + wrapping link row) below `sm`, verified at 390/768/1280px.
+4. Real staff RBAC (`0018_staff_rbac.sql`) — closes the gap this file has tracked since 0002
+   ("a real staff role/claim is deferred"). Added a `staff_users` table (service-role-only, no
+   anon/authenticated policy at all) and an `is_staff()` SECURITY DEFINER check; every staff-only
+   RLS policy (`orders` SELECT, `books`/`merchandise` INSERT, `fetch_pending_preorders()`) now
+   gates on it instead of the blanket `authenticated` role. `signInAction` and `product-b/page.tsx`
+   both call `is_staff()` post-login and reject/sign-out non-staff sessions.
+   `scripts/backfill-staff-roster.mjs` (run once, already done) adds every existing Supabase Auth
+   user to the roster.
+
+**Why:** The updated spec's items 1–3 as given; item 4 was explicitly already an open item in this
+file, not a new ask. **Deviated from the spec's literal item 4** (bcrypt/argon2, JWTs, dedicated
+`/api/staff/*` REST endpoints): `signInAction` already runs through Supabase Auth
+(`supabase.auth.signInWithPassword`), which already hashes credentials and issues JWT-based
+sessions — building a parallel bcrypt/JWT stack would duplicate that, not replace a gap. Dedicated
+REST route handlers would also contradict CLAUDE.md's architecture rule (Server Actions for
+mutations, not custom API routes) for no functional gain over the existing
+`addBookAction`/`addMerchandiseAction`/`searchBooksAction`. What was actually missing —
+authorization, not authentication — is what `staff_users`/`is_staff()` adds.
+
+**Verified live:**
+- Author bio: real insert + drawer screenshot, described above.
+- Events images: all 5 render correctly at `/product-a/events` and each detail page.
+- Header: screenshotted and fixed at 3 breakpoints (390/768/1280px) after catching the mobile
+  overflow regression in this session's own testing, not left for someone else to find.
+- RBAC: **not verified via the actual sign-in UI** (still no staff account password in this
+  environment — same recurring gap as every Product B session). Instead verified the policies
+  directly: minted a real session for the existing staff account and confirmed `is_staff()`
+  returns `true`; created a throwaway non-staff Supabase Auth account, confirmed `is_staff()`
+  returns `false` for it *and* that RLS actually blocks its `books` insert
+  ("new row violates row-level security policy"); deleted the throwaway account after.
+
+**Still open:** Someone with the Product B staff password should still do one real UI pass — this
+session's RBAC verification proves the policies are correct, not that the sign-in form's new
+rejection message renders correctly for a real non-staff login attempt.

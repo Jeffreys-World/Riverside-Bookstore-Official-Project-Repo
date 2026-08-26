@@ -70,6 +70,7 @@ export interface Book {
   reorder_threshold: number; // default 5
   cover_url: string | null; // null = no Google Books match / not yet backfilled
   description: string | null; // null = no Google Books match / not yet backfilled
+  author_bio: string | null; // null = not entered — staff-only field, no auto-lookup source
   price: number; // >= 0, display-only — no checkout/payment flow reads this yet
 }
 
@@ -107,6 +108,7 @@ export interface AuthorEvent {
    */
   author_event_at: string; // ISO 8601, e.g. "2026-09-05T18:30:00-07:00"
   location: string; // 0015_events_details_and_rsvp.sql — defaults to the store's own address
+  image_url: string | null; // 0017_events_images.sql — null for pre-0017 rows until backfilled
 }
 
 export interface EventTicket {
@@ -227,6 +229,9 @@ export const addBookRequestSchema = z.object({
   author_name: z.string().trim().min(1),
   description: z.string().trim().min(1).nullable(),
   cover_url: z.string().trim().url().nullable(),
+  // Staff-only, no Google Books equivalent to auto-fetch from (unlike
+  // description/cover_url) — always either what staff typed, or null.
+  author_bio: z.string().trim().min(1).nullable(),
   stock_quantity: stockQuantitySchema,
   price: priceSchema,
 });

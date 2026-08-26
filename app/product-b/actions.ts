@@ -15,6 +15,18 @@ export async function signInAction(formData: FormData) {
   if (error) {
     redirect(`/product-b/sign-in?error=${encodeURIComponent(error.message)}`);
   }
+
+  // Valid Supabase Auth credentials aren't the same as staff — 0018's
+  // staff_users/is_staff() is the actual authorization check. A
+  // customer account (once real customer auth exists) could otherwise
+  // sign in here and land on the staff dashboard's UI, even though every
+  // staff-only mutation/read would then fail at the RLS layer.
+  const { data: isStaff, error: staffCheckError } = await supabase.rpc("is_staff");
+  if (staffCheckError || !isStaff) {
+    await supabase.auth.signOut();
+    redirect(`/product-b/sign-in?error=${encodeURIComponent("This account isn't a staff account.")}`);
+  }
+
   redirect("/product-b");
 }
 
@@ -29,12 +41,14 @@ export async function addBookAction(formData: FormData) {
   const rawPrice = String(formData.get("price") ?? "").trim();
   const rawDescription = String(formData.get("description") ?? "").trim();
   const rawCoverUrl = String(formData.get("cover_url") ?? "").trim();
+  const rawAuthorBio = String(formData.get("author_bio") ?? "").trim();
   const parsed = addBookRequestSchema.safeParse({
     isbn: String(formData.get("isbn") ?? "").trim(),
     book_title: String(formData.get("book_title") ?? ""),
     author_name: String(formData.get("author_name") ?? ""),
     description: rawDescription === "" ? null : rawDescription,
     cover_url: rawCoverUrl === "" ? null : rawCoverUrl,
+    author_bio: rawAuthorBio === "" ? null : rawAuthorBio,
     stock_quantity: rawStock === "" ? null : Number(rawStock),
     price: Number(rawPrice),
   });
@@ -45,11 +59,12 @@ export async function addBookAction(formData: FormData) {
     );
   }
 
-  const { isbn, book_title, author_name, description, cover_url, stock_quantity, price } = parsed.data;
+  const { isbn, book_title, author_name, description, cover_url, author_bio, stock_quantity, price } =
+    parsed.data;
   const supabase = getServerClient();
   const { error } = await supabase
     .from("books")
-    .insert({ isbn, book_title, author_name, description, cover_url, stock_quantity, price });
+    .insert({ isbn, book_title, author_name, description, cover_url, author_bio, stock_quantity, price });
 
   if (error) {
     redirect(`/product-b?addBookError=${encodeURIComponent(error.message)}`);

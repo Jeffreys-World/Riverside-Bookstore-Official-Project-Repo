@@ -111,6 +111,16 @@ export function ProductDrawer() {
                 <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink/80">
                   {product.description || "No description available yet for this title."}
                 </p>
+                {product.authorBio && (
+                  <>
+                    <h3 className="mt-6 text-sm font-medium uppercase tracking-wide text-ink/50">
+                      About the author
+                    </h3>
+                    <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink/80">
+                      {product.authorBio}
+                    </p>
+                  </>
+                )}
                 <button
                   type="button"
                   onClick={handleAdd}

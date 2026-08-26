@@ -28,7 +28,9 @@ export default async function ProductAPage({
   const [{ data: books, error }, { data: merchandise }] = await Promise.all([
     supabase
       .from("books")
-      .select("isbn, book_title, author_name, stock_quantity, cover_url, description, price")
+      .select(
+        "isbn, book_title, author_name, stock_quantity, cover_url, description, author_bio, price"
+      )
       .order("book_title"),
     supabase
       .from("merchandise")
@@ -85,6 +87,7 @@ export default async function ProductAPage({
                 author_name={b.author_name}
                 cover_url={b.cover_url}
                 description={b.description}
+                author_bio={b.author_bio}
                 price={b.price}
                 stockQuantity={b.stock_quantity}
                 status={flaggedBooks.find((f) => f.id === b.isbn)?.status ?? "needs_attention"}

@@ -10,7 +10,7 @@ export default async function EventDetailPage({ params }: { params: { id: string
   const supabase = getServerClient();
   const { data: event } = await supabase
     .from("author_events")
-    .select("id, event_title, author_name, event_description, author_event_at, location")
+    .select("id, event_title, author_name, event_description, author_event_at, location, image_url")
     .eq("id", params.id)
     .maybeSingle();
 
@@ -22,7 +22,16 @@ export default async function EventDetailPage({ params }: { params: { id: string
         ← All events
       </Link>
 
-      <h1 className="mt-4 font-serif text-3xl text-ink sm:text-4xl">{event.event_title}</h1>
+      {event.image_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={event.image_url}
+          alt=""
+          className="mt-6 aspect-[16/9] w-full rounded-lg object-cover shadow-md"
+        />
+      )}
+
+      <h1 className="mt-6 font-serif text-3xl text-ink sm:text-4xl">{event.event_title}</h1>
       {event.author_name && <p className="mt-2 text-lg text-ink/70">{event.author_name}</p>}
 
       <dl className="mt-6 grid grid-cols-1 gap-4 rounded-lg border border-ink/10 bg-surface p-5 sm:grid-cols-3">

@@ -28,6 +28,16 @@ export default async function ProductBPage({
     redirect("/product-b/sign-in");
   }
 
+  // Session alone isn't staff (0018_staff_rbac.sql) — signInAction already
+  // rejects a non-staff sign-in, but a session can also arrive here from
+  // an existing cookie (e.g. after a roster change revokes access), so
+  // this page re-checks rather than trusting sign-in time alone.
+  const { data: isStaff } = await supabase.rpc("is_staff");
+  if (!isStaff) {
+    await supabase.auth.signOut();
+    redirect("/product-b/sign-in?error=" + encodeURIComponent("This account isn't a staff account."));
+  }
+
   const [ordersRes, booksRes, merchandiseRes] = await Promise.all([
     supabase
       .from("orders")

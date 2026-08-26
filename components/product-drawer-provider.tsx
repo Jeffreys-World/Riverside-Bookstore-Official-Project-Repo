@@ -17,6 +17,7 @@ export type DetailProduct =
       author: string;
       coverUrl: string | null;
       description: string | null;
+      authorBio: string | null;
       price: number;
       status: StockStatus;
       stockQuantity: number | null;

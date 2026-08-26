@@ -117,6 +117,7 @@ export function Dashboard({
   const [newAuthor, setNewAuthor] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [newCoverUrl, setNewCoverUrl] = useState("");
+  const [newAuthorBio, setNewAuthorBio] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<BookSearchCandidate[] | null>(null);
@@ -527,6 +528,20 @@ export function Dashboard({
                 value={newCoverUrl}
                 onChange={(e) => setNewCoverUrl(e.target.value)}
                 className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+              />
+            </div>
+            <div>
+              <label htmlFor="author_bio" className="block text-sm font-medium text-ink">
+                Author bio <span className="font-normal text-ink/50">(optional)</span>
+              </label>
+              <textarea
+                id="author_bio"
+                name="author_bio"
+                rows={3}
+                placeholder="No auto-fetch source for this one — type it in, or leave blank"
+                value={newAuthorBio}
+                onChange={(e) => setNewAuthorBio(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
               />
             </div>
             <div>

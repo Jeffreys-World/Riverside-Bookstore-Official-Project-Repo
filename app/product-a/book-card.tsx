@@ -13,6 +13,7 @@ interface BookCardProps {
   author_name: string;
   cover_url: string | null;
   description: string | null;
+  author_bio: string | null;
   price: number;
   status: StockStatus;
   stockQuantity: number | null;
@@ -60,6 +61,7 @@ export function BookCard(book: BookCardProps) {
       author: book.author_name,
       coverUrl: book.cover_url,
       description: book.description,
+      authorBio: book.author_bio,
       price: book.price,
       status: book.status,
       stockQuantity: book.stockQuantity,
