@@ -11,7 +11,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { evaluateStockStatus, type FlaggedInventoryRecord } from "@/lib/inventory";
 import { CUSTOMER_ID_REGEX, ISBN13_REGEX } from "@/types/schema";
-import { createPreorderAction } from "./actions";
+import { createPreorderAction, signUpCustomerAction } from "./actions";
 
 interface BookRow {
   isbn: string;
@@ -48,11 +48,32 @@ export function PreorderForm({ books }: { books: BookRow[] }) {
   const [customerId, setCustomerId] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [signingUp, setSigningUp] = useState(false);
+  const [signupMessage, setSignupMessage] = useState("");
   const [result, setResult] = useState<
-    { kind: "success"; orderId: string } | { kind: "error"; message: string } | null
+    | { kind: "success"; orderId: string; rewardPoints: number | null }
+    | { kind: "error"; message: string }
+    | null
   >(null);
 
   const selectedStatus = flagged.find((f) => f.id === isbn)?.status;
+
+  async function handleSignUp() {
+    if (signingUp) return;
+    setSigningUp(true);
+    setSignupMessage("");
+    try {
+      const res = await signUpCustomerAction();
+      if (res.ok) {
+        setCustomerId(res.customerId);
+        setSignupMessage(`Your loyalty ID is ${res.customerId} — save it to check your rewards next time.`);
+      } else {
+        setSignupMessage(res.message);
+      }
+    } finally {
+      setSigningUp(false);
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -73,7 +94,7 @@ export function PreorderForm({ books }: { books: BookRow[] }) {
       const res = await createPreorderAction({ customer_id: customerId, isbn, quantity });
       setResult(
         res.ok
-          ? { kind: "success", orderId: res.orderId }
+          ? { kind: "success", orderId: res.orderId, rewardPoints: res.rewardPoints }
           : { kind: "error", message: res.message }
       );
     } finally {
@@ -95,16 +116,31 @@ export function PreorderForm({ books }: { books: BookRow[] }) {
         <label htmlFor="customer_id" className="block text-sm font-medium text-ink">
           Customer ID
         </label>
-        <input
-          id="customer_id"
-          name="customer_id"
-          type="text"
-          placeholder="cust_XXXXX"
-          value={customerId}
-          onChange={(e) => setCustomerId(e.target.value)}
-          required
-          className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
-        />
+        <div className="mt-1 flex gap-2">
+          <input
+            id="customer_id"
+            name="customer_id"
+            type="text"
+            placeholder="cust_XXXXX"
+            value={customerId}
+            onChange={(e) => setCustomerId(e.target.value)}
+            required
+            className="block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+          />
+          <button
+            type="button"
+            onClick={handleSignUp}
+            disabled={signingUp}
+            className="min-h-[44px] flex-none whitespace-nowrap rounded-md border border-ink/20 px-4 text-sm text-ink disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {signingUp ? "Creating…" : "New customer? Sign up"}
+          </button>
+        </div>
+        {signupMessage && (
+          <p role="status" className="mt-2 text-sm text-ink/70">
+            {signupMessage}
+          </p>
+        )}
       </div>
 
       <fieldset>
@@ -193,6 +229,13 @@ export function PreorderForm({ books }: { books: BookRow[] }) {
           <p className="rounded-md bg-accent-soft p-3 text-ink">
             Pre-order placed — confirmation {result.orderId}. We&apos;ll have it ready for
             pickup.
+            {result.rewardPoints !== null && (
+              <>
+                {" "}
+                You&apos;ve earned a stamp — you now have {result.rewardPoints}{" "}
+                {result.rewardPoints === 1 ? "point" : "points"} toward your next reward.
+              </>
+            )}
           </p>
         )}
         {result?.kind === "error" && (
