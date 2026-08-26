@@ -268,3 +268,59 @@ server-side logging in this repo on this machine.
 Build/lint/typecheck/vitest all pass; full browser verification done for every new surface
 (nav on all 5 pages, Product C panel, and a real signup -> account-page round trip showing the
 actual order and point).
+
+---
+
+## /qa pass (2026-08-26): 7 issues found, 3 fixed, 4 deferred
+
+**What:** Full-app QA sweep (all 4 products + account page + site nav) against the live dev
+server and real Supabase database. Full report: `.gstack/qa-reports/qa-report-localhost-2026-08-26.md`.
+Health score 90 -> 99/100.
+
+**Fixed this pass (commits `1838884`, `87db83f`, `bd7ca5a`, `6e733b2`):**
+- **Book-selection radios had no accessible name for 6 of 8 catalog titles** (high,
+  accessibility). Each book's long description paragraph was inside the same `<label>` as its
+  radio input, and the flattened label text (1400-2800+ chars once the description is included)
+  exceeded Chromium's accessible-name-from-content length threshold, so the browser computed an
+  *empty* name — confirmed via the real Chromium accessibility tree, not just a lint rule. Fixed
+  by marking the description paragraph `aria-hidden` in `app/product-a/preorder-form.tsx` so the
+  name is computed from title/author/price/status only. No regression test added — this repo's
+  Vitest runs in `environment: "node"` with no jsdom/RTL, and `CLAUDE.md` documents
+  browser-behavior verification here as manual by design.
+- **Product D's generated Instagram captions contained literal, unrendered markdown asterisks**
+  (medium, content) — Gemini sometimes wraps a title in `*emphasis*`, which showed up as literal
+  asterisks once pasted into a caption instead of italics, undercutting the "ready to paste"
+  point of the feature. Fixed with a `stripMarkdownEmphasis()` helper, extracted to
+  `lib/markdown.ts` (couldn't live in `product-d/actions.ts` itself — a `"use server"` file can
+  only export async functions) with a real regression test at `lib/markdown.test.ts` (5 cases).
+- **Three more multi-argument `console.error` calls matching the exact Console Ninja crash
+  pattern already found and fixed once this session** (high, functional) —
+  `app/api/live/token/route.ts:87`, `app/product-c/actions.ts:198` (a third call site in a file
+  that already had two others fixed), and `app/product-d/actions.ts:74` all called
+  `console.error(label, err)` with two arguments, all inside a catch block wrapping a real
+  external API call (Gemini). Found via a repo-wide grep while fixing the item above, not via an
+  observed crash — same fix as before (collapse to one template-literal string arg). No
+  regression test: the crash is caused by a VSCode extension hooking `console` in the dev-server
+  process, which a standalone `vitest run` process never touches, so there's nothing in-process
+  to assert against.
+
+**Deferred this pass (all low severity — see the QA report for repro steps):**
+- Homepage status card still says Products C and D "need GOOGLE_API_KEY at runtime" — the key is
+  configured and both were verified working live during this pass. One-line text fix whenever
+  it's convenient; misleading for anyone (e.g. a grader) reading the homepage literally.
+- The pre-order form's "Customer ID must look like cust_XXXXX" error doesn't clear when a
+  subsequent sign-up succeeds — both messages show at once until the next real submit.
+- The site nav overflows at a 375px mobile width with no fade/arrow hinting it's scrollable
+  (it is scrollable — confirmed — just not obviously so).
+- Gemini-backed responses (Product C chat, Product D generation) take 19-32s in dev mode with
+  only a static "Checking..." label — no streaming or changing progress text. Inherent to the
+  Gemini round trip (Product C's is two calls: function-call, then final answer), not something
+  a small source fix resolves.
+
+**Also confirmed working, not just "not broken":** the full loyalty loop (sign up -> pre-order ->
+stamp -> account page shows both) end-to-end with real data; Product C's live-inventory grounding
+(correctly declined to confirm stock on a not-yet-inventoried title instead of guessing); the
+"not yet inventoried" pre-order rejection path; all 8 catalog titles reachable in Product D's
+dropdown (one looked missing in a QA tool's own rendering — a colon in "Sapiens: A Brief History
+of Humankind" tripped up the snapshot tool, not the app; verified via a raw DOM query before
+writing it up, so it was never filed as a bug).
