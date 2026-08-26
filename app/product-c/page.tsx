@@ -10,12 +10,16 @@ export const dynamic = "force-dynamic";
 
 export default async function ProductCPage() {
   const supabase = getServerClient();
-  const { data: events } = await supabase
+  const { data: events, error: eventsError } = await supabase
     .from("author_events")
     .select("event_title, event_description, author_event_at")
     .gte("author_event_at", new Date().toISOString())
     .order("author_event_at", { ascending: true })
     .limit(5);
+
+  if (eventsError) {
+    console.error(`Product C events panel query failed: ${eventsError.message}`);
+  }
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">

@@ -132,7 +132,9 @@ export async function getAccountAction(customerId: string): Promise<GetAccountRe
     ]);
 
   if (balanceError || ordersError) {
-    console.error("getAccountAction query failed:", balanceError, ordersError);
+    console.error(
+      `getAccountAction query failed: balance=${balanceError?.message ?? "ok"} orders=${ordersError?.message ?? "ok"}`
+    );
     return { ok: false, message: "Something went wrong loading your account. Please try again." };
   }
   if (balance === null) {

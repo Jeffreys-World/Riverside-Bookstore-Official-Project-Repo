@@ -73,7 +73,7 @@ async function executeTool(
       .limit(5);
 
     if (error) {
-      console.error("Product C check_inventory query failed:", error);
+      console.error(`Product C check_inventory query failed: ${error.message}`);
       return { matches: [], lookup_failed: true };
     }
 
@@ -112,7 +112,7 @@ async function executeTool(
       .limit(5);
 
     if (error) {
-      console.error("Product C get_upcoming_events query failed:", error);
+      console.error(`Product C get_upcoming_events query failed: ${error.message}`);
       return { events: [], lookup_failed: true };
     }
 

@@ -43,7 +43,9 @@ export default async function ProductBPage({
   // rather than showing empty lists as if the catalog really were empty.
   const queryErrors = [ordersRes.error, booksRes.error, merchandiseRes.error].filter(Boolean);
   if (queryErrors.length > 0) {
-    console.error("Product B dashboard query failure:", queryErrors);
+    console.error(
+      `Product B dashboard query failure: ${queryErrors.map((e) => e?.message).join("; ")}`
+    );
   }
   const loadError =
     queryErrors.length > 0
