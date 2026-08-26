@@ -182,3 +182,41 @@ add-book form now requires a price, and the dashboard adds a live "Merchandise s
 merchandise data gets in today, same starting point `books` had before the add-book flow was
 built. Migrations still need `supabase db push` against the live project (no CLI credentials in
 this session, same recurring gap as every prior migration in this file).
+
+---
+
+## Close the 5 gaps found by the 2026-08-26 pain-point review
+
+**What:** A 4-agent review (one per product) checked each product's actual code against the
+pain point it's supposed to solve, per the brief. Found: Product A never wrote `reward_points`
+anywhere (pain point 2 unaddressed) and had no customer signup path (only `cust_demo01` could
+ever check out); Product B's dashboard swallowed query errors and left a public RPC
+(`fetch_pending_preorders`) reachable by anon, bypassing the sign-in gate; Product C's two live
+Supabase reads also swallowed errors, so a failed lookup read as "not in stock"/"no events";
+Product D only had real data for books, not the "or upcoming event" half of its brief.
+
+**Why:** User asked to close all 5 in one pass ("yes all") right after the review report.
+
+**Status (2026-08-26 build):** Done, 5 commits:
+- `0011_loyalty_stamps.sql` — `create_preorder()` now increments `customers.reward_points` by
+  one stamp per order.
+- `0010_customer_signup.sql` — new `create_customer()` RPC mints a real `cust_XXXXX` id;
+  Product A gets a "New customer? Sign up" button (`signUpCustomerAction`) and shows the fresh
+  reward balance after a successful pre-order.
+- `0012_harden_rpc_grants.sql` — revoked anon EXECUTE on `fetch_pending_preorders()` (no
+  legitimate anon caller existed) and added explicit anon+authenticated revokes on
+  `create_preorder`/`create_customer` in case the project's default privileges grant roles
+  EXECUTE directly (a bare `REVOKE FROM PUBLIC` wouldn't cover that).
+- Product B's `page.tsx` now checks each query's `error`, logs server-side, and shows a banner
+  on the dashboard instead of silently rendering empty lists.
+- Product C's `check_inventory`/`get_upcoming_events` now return `lookup_failed: true` on a
+  query error instead of `data ?? []`; the system instruction tells the model to say it's
+  having trouble checking rather than report a false negative.
+- Product D's `page.tsx` now also queries future `author_events`; `content-form.tsx` adds an
+  event picker alongside the book picker, feeding grounded facts into the generation prompt.
+
+Build/lint/typecheck/vitest all pass. **Not yet verified live:** these migrations aren't pushed
+to the live Supabase project yet (same recurring gap — no CLI credentials in this session), and
+there's no local Supabase CLI available either, so none of this was exercised in-browser against
+a real database this session. Run `supabase db push`, then walk each product manually before
+calling this closed.
