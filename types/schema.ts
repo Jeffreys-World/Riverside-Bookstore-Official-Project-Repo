@@ -68,6 +68,8 @@ export interface Book {
   author_name: string;
   stock_quantity: StockQuantity; // null = not yet inventoried, NEVER coerce to 0
   reorder_threshold: number; // default 5
+  cover_url: string | null; // null = no Google Books match / not yet backfilled
+  description: string | null; // null = no Google Books match / not yet backfilled
 }
 
 export interface AuthorEvent {

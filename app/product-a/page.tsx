@@ -14,7 +14,7 @@ export default async function ProductAPage() {
   const supabase = getServerClient();
   const { data: books, error } = await supabase
     .from("books")
-    .select("isbn, book_title, author_name, stock_quantity")
+    .select("isbn, book_title, author_name, stock_quantity, cover_url, description")
     .order("book_title");
 
   return (

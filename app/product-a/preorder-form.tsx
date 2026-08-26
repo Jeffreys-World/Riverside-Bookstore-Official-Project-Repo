@@ -18,6 +18,8 @@ interface BookRow {
   book_title: string;
   author_name: string;
   stock_quantity: number | null;
+  cover_url: string | null;
+  description: string | null;
 }
 
 const STATUS_LABEL: Record<FlaggedInventoryRecord["status"], string> = {
@@ -99,27 +101,60 @@ export function PreorderForm({ books }: { books: BookRow[] }) {
         />
       </div>
 
-      <div>
-        <label htmlFor="isbn" className="block text-sm font-medium text-ink">
-          Title
-        </label>
-        <select
-          id="isbn"
-          name="isbn"
-          value={isbn}
-          onChange={(e) => setIsbn(e.target.value)}
-          className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
-        >
-          {books.map((b) => (
-            <option key={b.isbn} value={b.isbn}>
-              {b.book_title} — {b.author_name}
-            </option>
-          ))}
-        </select>
-        {selectedStatus && (
-          <p className="mt-1 text-sm text-ink/60">{STATUS_LABEL[selectedStatus]}</p>
-        )}
-      </div>
+      <fieldset>
+        <legend className="block text-sm font-medium text-ink">Title</legend>
+        <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {books.map((b) => {
+            const status = flagged.find((f) => f.isbn === b.isbn)?.status;
+            const selected = b.isbn === isbn;
+            return (
+              <label
+                key={b.isbn}
+                className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition ${
+                  selected
+                    ? "border-accent ring-1 ring-accent"
+                    : "border-ink/10 hover:border-ink/30"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="isbn"
+                  value={b.isbn}
+                  checked={selected}
+                  onChange={() => setIsbn(b.isbn)}
+                  className="sr-only"
+                />
+                {b.cover_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={b.cover_url}
+                    alt=""
+                    loading="lazy"
+                    className="h-20 w-14 flex-none rounded object-cover"
+                  />
+                ) : (
+                  <div
+                    aria-hidden
+                    className="flex h-20 w-14 flex-none items-center justify-center rounded bg-ink/5 text-[10px] text-ink/40"
+                  >
+                    No cover
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-ink">{b.book_title}</p>
+                  <p className="truncate text-sm text-ink/60">{b.author_name}</p>
+                  {status && (
+                    <p className="mt-1 text-xs text-ink/60">{STATUS_LABEL[status]}</p>
+                  )}
+                  {b.description && (
+                    <p className="mt-1 line-clamp-2 text-xs text-ink/50">{b.description}</p>
+                  )}
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      </fieldset>
 
       <div>
         <label htmlFor="quantity" className="block text-sm font-medium text-ink">
