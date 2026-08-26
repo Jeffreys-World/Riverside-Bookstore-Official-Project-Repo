@@ -22,6 +22,13 @@ project access this build didn't have. Until that user exists, `/product-b` will
 the sign-in page. Also unverified: this build had no Node.js/npm available to run `npm run build`,
 `npm run typecheck`, or `npm test` locally — CI on push is the first real check.
 
+**Status (2026-08-25, later):** Staff user created (`jeffreydelacruzbarrera@gmail.com`, confirmed
+in Supabase Auth) — verified present via `auth.admin.listUsers()`. `/product-b` correctly
+redirects to sign-in when unauthenticated (307) and the sign-in page loads (200). Login itself
+still needs a manual pass in-browser to confirm the dashboard renders and Realtime updates land —
+this only verified the account exists and the RLS gate is wired, not the full sign-in round trip.
+The underlying gap (seeded user, not a real role/claim) is unchanged.
+
 ---
 
 ## Build Products C (Customer Support Chatbot) and D (Marketing Content Generator)
@@ -67,3 +74,55 @@ directly rather than run this first. C and D reuse A+B's existing tokens (serif/
 palette) as-is, so they're visually consistent with the rest of the app, but neither got its own
 design pass (no dedicated review of chat UI patterns or content-generator layout specifically).
 Still worth running before this goes further than a coursework demo.
+
+---
+
+## Verify Product B sign-in end-to-end in-browser
+
+**What:** Confirm the full login round trip — sign in with the staff account, land on the
+dashboard, see the pending-preorder queue, and confirm a pre-order placed on Product A shows up
+live via Realtime without a manual refresh.
+
+**Why:** This session confirmed the staff user exists in Supabase Auth and that the RLS gate
+redirects correctly when unauthenticated, but never completed an actual login (no access to the
+account password from this session).
+
+**Depends on:** Staff user already created — done this session.
+
+**Status:** Not started.
+
+---
+
+## Add a staff "add book" flow to Product B
+
+**What:** A form (or admin action) in Product B for staff to add a new title to `books`, instead
+of the catalog only ever coming from the seed migration.
+
+**Why:** Right now the catalog is frozen at the 6 seed titles. There's no way to grow it without
+hand-writing a SQL migration. Once this exists, it should also trigger the Google Books lookup
+(see next item) so new titles get a cover/description automatically instead of needing a manual
+backfill run.
+
+**Depends on:** None technically, but pairs naturally with the auto-backfill item below.
+
+**Status:** Not started.
+
+---
+
+## Auto-fetch Google Books metadata on insert instead of manual backfill
+
+**What:** Call `lib/google-books.ts`'s `fetchBookMetadata()` at the point a book is added to
+`books` (once the add-book flow above exists), so `cover_url`/`description` are populated
+immediately instead of requiring `node scripts/backfill-book-covers.mjs` to be re-run by hand.
+
+**Why:** The current backfill script is a one-time/manual step (2026-08-25 session) — fine for
+seeding the 6-book demo catalog once, but doesn't scale if books get added through the app.
+
+**Context:** Google's keyless Books API quota is fully disabled (`quota_limit_value: 0`) —
+`GOOGLE_BOOKS_API_KEY` is required going forward, already set in `.env.local`. The fetch helper
+already retries transient 429/5xx errors (fixed 2026-08-25 after the backfill script silently
+dropped data on flaky 503s), so it's safe to call synchronously from a Server Action.
+
+**Depends on:** The add-book flow above.
+
+**Status:** Not started.
