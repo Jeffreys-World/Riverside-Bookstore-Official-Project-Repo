@@ -130,6 +130,47 @@ export async function addMerchandiseAction(formData: FormData) {
   redirect(`/product-b?merchAdded=${encodeURIComponent(item_name)}`);
 }
 
+export type RemoveStockResult =
+  | { ok: true; stockQuantity: number }
+  | { ok: false; message: string };
+
+/**
+ * Manual correction for a stock_quantity typo'd too high — not the
+ * pre-order path, so no `stock_quantity > 0` guard here by design, just
+ * the atomic clamp-at-0 inside remove_book_stock() itself (0032).
+ */
+export async function removeBookStockAction(isbn: string, amount: number): Promise<RemoveStockResult> {
+  if (!Number.isInteger(amount) || amount < 1) {
+    return { ok: false, message: "Enter a whole number of 1 or more." };
+  }
+
+  const supabase = getServerClient();
+  const { data, error } = await supabase.rpc("remove_book_stock", { p_isbn: isbn, p_amount: amount });
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+  if (data === null) {
+    return { ok: false, message: "That title couldn't be found." };
+  }
+  return { ok: true, stockQuantity: data as number };
+}
+
+export async function removeMerchandiseStockAction(id: string, amount: number): Promise<RemoveStockResult> {
+  if (!Number.isInteger(amount) || amount < 1) {
+    return { ok: false, message: "Enter a whole number of 1 or more." };
+  }
+
+  const supabase = getServerClient();
+  const { data, error } = await supabase.rpc("remove_merchandise_stock", { p_id: id, p_amount: amount });
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+  if (data === null) {
+    return { ok: false, message: "That item couldn't be found." };
+  }
+  return { ok: true, stockQuantity: data as number };
+}
+
 export type SearchBooksResult =
   | { ok: true; results: BookSearchCandidate[] }
   | { ok: false; message: string };

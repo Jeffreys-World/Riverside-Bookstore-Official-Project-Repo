@@ -26,7 +26,7 @@ export function SupportTabs({ events, eventsError }: { events: EventRow[]; event
       <div
         role="tablist"
         aria-label="Support Center sections"
-        className="flex gap-1 overflow-x-auto border-b border-ink/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex flex-wrap items-center justify-between gap-2 border-b border-ink/10"
       >
         {TABS.map((tab) => (
           <button
@@ -35,7 +35,7 @@ export function SupportTabs({ events, eventsError }: { events: EventRow[]; event
             role="tab"
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition-transform transition-colors duration-150 hover:scale-125 ${
+            className={`min-h-[52px] flex-1 whitespace-nowrap border-b-2 px-4 py-4 text-base font-medium transition-transform duration-150 hover:scale-105 ${
               activeTab === tab.key
                 ? "border-accent text-ink"
                 : "border-transparent text-ink/60 hover:text-ink"

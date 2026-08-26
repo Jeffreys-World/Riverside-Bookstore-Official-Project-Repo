@@ -8,7 +8,14 @@ import {
   type FlaggedInventoryRecord,
 } from "@/lib/inventory";
 import { useRealtimeSubscription } from "@/lib/realtime";
-import { addBookAction, addMerchandiseAction, searchBooksAction } from "./actions";
+import {
+  addBookAction,
+  addMerchandiseAction,
+  searchBooksAction,
+  removeBookStockAction,
+  removeMerchandiseStockAction,
+  type RemoveStockResult,
+} from "./actions";
 import { StaffNav } from "./staff-nav";
 import { StampBadge, type StampTone } from "@/components/stamp-badge";
 import { CardImage } from "@/components/card-image";
@@ -73,6 +80,59 @@ const TABS = [
   { key: "add-merch", label: "Add Merchandise" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
+
+// Manual "walk back a stock_quantity typo" control — shown on Stock
+// Levels/Merchandise Stock cards. Own local state (amount/pending/error)
+// so a mistake on one card doesn't touch the others; parent just gets
+// told the resulting quantity to merge into its map.
+function StockRemoveControl({
+  disabled,
+  onRemove,
+}: {
+  disabled: boolean;
+  onRemove: (amount: number) => Promise<RemoveStockResult>;
+}) {
+  const [amount, setAmount] = useState("1");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleClick() {
+    const parsed = Number(amount);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      setError("Enter 1 or more");
+      return;
+    }
+    setPending(true);
+    setError("");
+    const res = await onRemove(parsed);
+    setPending(false);
+    if (!res.ok) setError(res.message);
+  }
+
+  return (
+    <div className="mt-2 flex items-center gap-1">
+      <input
+        type="number"
+        min={1}
+        step={1}
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        aria-label="Amount to remove"
+        disabled={disabled}
+        className="min-h-[36px] w-14 rounded-md border border-ink/20 bg-field px-2 py-1 text-sm text-ink disabled:cursor-not-allowed disabled:opacity-50"
+      />
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={disabled || pending}
+        className="min-h-[36px] flex-1 rounded-md border border-claret/30 px-2 py-1 text-xs font-medium text-claret disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {pending ? "Removing…" : "Remove stock"}
+      </button>
+      {error && <p className="w-full text-[10px] text-claret">{error}</p>}
+    </div>
+  );
+}
 
 export function Dashboard({
   initialOrders,
@@ -236,7 +296,7 @@ export function Dashboard({
       <div
         role="tablist"
         aria-label="Inventory sections"
-        className="mt-8 flex gap-1 overflow-x-auto border-b border-ink/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="mt-8 flex flex-wrap items-center justify-between gap-2 border-b border-ink/10"
       >
         {TABS.map((tab) => (
           <button
@@ -245,7 +305,7 @@ export function Dashboard({
             role="tab"
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+            className={`min-h-[52px] flex-1 whitespace-nowrap border-b-2 px-4 py-4 text-base font-medium transition-transform duration-150 hover:scale-105 ${
               activeTab === tab.key
                 ? "border-accent text-ink"
                 : "border-transparent text-ink/60 hover:text-ink"
@@ -313,6 +373,21 @@ export function Dashboard({
                       <span className="font-mono text-sm text-ink/60">{f.stockQuantity ?? "—"}</span>
                     </div>
                     <StampBadge tone={STATUS_TONE[f.status]}>{STATUS_LABEL[f.status]}</StampBadge>
+                    <StockRemoveControl
+                      disabled={!f.stockQuantity}
+                      onRemove={async (amount) => {
+                        const res = await removeBookStockAction(f.id, amount);
+                        if (res.ok) {
+                          setBooksByIsbn((prev) => {
+                            const existing = prev[f.id];
+                            return existing
+                              ? { ...prev, [f.id]: { ...existing, stock_quantity: res.stockQuantity } }
+                              : prev;
+                          });
+                        }
+                        return res;
+                      }}
+                    />
                   </div>
                 </article>
               ))}
@@ -349,6 +424,21 @@ export function Dashboard({
                       <span className="font-mono text-sm text-ink/60">{f.stockQuantity ?? "—"}</span>
                     </div>
                     <StampBadge tone={STATUS_TONE[f.status]}>{STATUS_LABEL[f.status]}</StampBadge>
+                    <StockRemoveControl
+                      disabled={!f.stockQuantity}
+                      onRemove={async (amount) => {
+                        const res = await removeMerchandiseStockAction(f.id, amount);
+                        if (res.ok) {
+                          setMerchandiseById((prev) => {
+                            const existing = prev[f.id];
+                            return existing
+                              ? { ...prev, [f.id]: { ...existing, stock_quantity: res.stockQuantity } }
+                              : prev;
+                          });
+                        }
+                        return res;
+                      }}
+                    />
                   </div>
                 </article>
               ))}

@@ -166,7 +166,7 @@ export function AccountView() {
           <div
             role="tablist"
             aria-label="Account sections"
-            className="flex gap-1 overflow-x-auto border-b border-ink/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex flex-wrap items-center justify-between gap-2 border-b border-ink/10"
           >
             {ACCOUNT_TABS.map((tab) => (
               <button
@@ -175,7 +175,7 @@ export function AccountView() {
                 role="tab"
                 aria-selected={activeTab === tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition-transform transition-colors duration-150 hover:scale-110 ${
+                className={`min-h-[52px] flex-1 whitespace-nowrap border-b-2 px-4 py-4 text-base font-medium transition-transform duration-150 hover:scale-105 ${
                   activeTab === tab.key
                     ? "border-accent text-ink"
                     : "border-transparent text-ink/60 hover:text-ink"

@@ -10,11 +10,11 @@ import { signOutAction } from "./actions";
 export function StaffNav({ active }: { active: "dashboard" | "marketing" }) {
   return (
     <div className="mb-8 flex items-center justify-between border-b border-ink/10 pb-4">
-      <div className="flex gap-1">
+      <div className="flex gap-2">
         <Link
           href="/product-b"
           aria-current={active === "dashboard" ? "page" : undefined}
-          className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium ${
+          className={`min-h-[48px] whitespace-nowrap rounded-md px-5 py-3 text-base font-medium transition-transform duration-150 hover:scale-105 ${
             active === "dashboard" ? "bg-surface text-ink" : "text-ink/60 hover:text-ink"
           }`}
         >
@@ -23,7 +23,7 @@ export function StaffNav({ active }: { active: "dashboard" | "marketing" }) {
         <Link
           href="/product-d"
           aria-current={active === "marketing" ? "page" : undefined}
-          className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium ${
+          className={`min-h-[48px] whitespace-nowrap rounded-md px-5 py-3 text-base font-medium transition-transform duration-150 hover:scale-105 ${
             active === "marketing" ? "bg-surface text-ink" : "text-ink/60 hover:text-ink"
           }`}
         >
@@ -31,7 +31,10 @@ export function StaffNav({ active }: { active: "dashboard" | "marketing" }) {
         </Link>
       </div>
       <form action={signOutAction}>
-        <button type="submit" className="text-sm text-ink/60 hover:text-ink">
+        <button
+          type="submit"
+          className="min-h-[48px] rounded-md px-5 py-3 text-base text-ink/60 transition-transform duration-150 hover:scale-105 hover:text-ink"
+        >
           Sign out
         </button>
       </form>
