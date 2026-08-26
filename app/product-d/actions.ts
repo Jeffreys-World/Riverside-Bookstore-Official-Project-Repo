@@ -81,7 +81,7 @@ export async function generateMarketingContentAction(
     }
     return { ok: true, content };
   } catch (err) {
-    console.error("Marketing content generation error:", err);
+    console.error(`Marketing content generation error: ${err}`);
     return { ok: false, message: "Something went wrong generating content. Please try again." };
   }
 }

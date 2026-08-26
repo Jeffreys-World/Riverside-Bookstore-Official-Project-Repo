@@ -84,7 +84,7 @@ export async function POST(request: Request) {
       model: LIVE_MODEL,
     });
   } catch (err) {
-    console.error("Failed to mint Gemini Live ephemeral token:", err);
+    console.error(`Failed to mint Gemini Live ephemeral token: ${err}`);
     return NextResponse.json(
       { error: "Failed to create voice session token." },
       { status: 502 }

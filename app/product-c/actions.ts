@@ -195,7 +195,7 @@ export async function askSupportChatbotAction(question: string): Promise<Support
       books: dedupeBooks(matchedBooks),
     };
   } catch (err) {
-    console.error("Support chatbot error:", err);
+    console.error(`Support chatbot error: ${err}`);
     return {
       answer: "Something went wrong answering that — please try again, or ask a bookseller in person.",
       books: [],
