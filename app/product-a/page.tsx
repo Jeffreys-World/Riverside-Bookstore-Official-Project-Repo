@@ -48,9 +48,14 @@ export default async function ProductAPage() {
     <main className="mx-auto max-w-5xl px-6 py-16">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-serif text-3xl text-ink sm:text-4xl">Order &amp; Loyalty</h1>
+          <h1 className="font-serif text-3xl text-ink sm:text-4xl">Shop the Catalog</h1>
           <p className="mt-2 text-ink/70">
-            Add a title to your cart to reserve it for in-store pickup.
+            Add a title to your cart to reserve it for in-store pickup. Order history and loyalty
+            points live under{" "}
+            <Link href="/product-a/account" className="text-accent underline-offset-2 hover:underline">
+              My Account
+            </Link>
+            .
           </p>
         </div>
         <Link
