@@ -324,3 +324,62 @@ stamp -> account page shows both) end-to-end with real data; Product C's live-in
 dropdown (one looked missing in a QA tool's own rendering — a colon in "Sapiens: A Brief History
 of Humankind" tripped up the snapshot tool, not the app; verified via a raw DOM query before
 writing it up, so it was never filed as a bug).
+
+---
+
+## UI/UX overhaul: catalog cards, cart drawer, checkout with pickup scheduling, staff workspace
+
+**What:** A full pass on the customer-facing UI/UX per a new spec — enlarged catalog cards with
+Reserve/Pre-Order fulfillment badges, an interactive cart drawer, a checkout page with the pickup
+address and a date/time selector, a dedicated sign-up screen, a refreshed My Account, and gating
+Product D behind staff auth so it reads as one "employee workspace" with Product B. Also adopted
+the color/type system from a new `design.md` reference doc the user added mid-session, closing the
+`/design-consultation` gap TODOS.md had flagged as deliberately skipped since 2026-08-25.
+
+**Why:** User request, delivered as a fairly complete spec rather than a vague ask — see
+`design.md` for the reference doc and the session's own decisions (below) for the schema/backend
+tradeoffs it required.
+
+**Status (2026-08-26 build):** Done, 5 commits, verified live in-browser (real signup -> cart ->
+checkout -> account round trip, screenshots at desktop and 375px mobile). Key decisions, made with
+the user before building rather than guessed:
+- **Fulfillment badges reuse existing stock status** (no `release_date` column added) —
+  in_stock/low_stock -> "Reserve", out_of_stock/needs_attention -> "Pre-Order". Discovered during
+  browser verification that this needed a follow-up: `create_preorder` hard-rejects any order once
+  `stock_quantity` isn't `> quantity` (CLAUDE.md's own concurrency rule), so a title flagged
+  "Pre-Order" could never actually complete checkout. Fixed by disabling "Add to cart" for those
+  titles (label reads "Ask a bookseller" instead) rather than loosening the RPC's stock guard.
+- **Cart checkout loops the existing single-item `create_preorder` RPC per line** (sequential, not
+  a new whole-cart transactional RPC) — `0014_orders_pickup_slot.sql` only adds two new optional
+  trailing params (`p_pickup_date`, `p_pickup_window`) to the existing function rather than
+  changing its atomicity model. One sold-out item reports its own failure; the rest of the cart
+  still succeeds — confirmed live (Atomic Habits correctly failed as not-yet-inventoried while
+  Klara and the Sun succeeded in the same checkout).
+- **Pickup date/window is persisted**, not UI-only — `orders.pickup_date`/`pickup_window` (nullable,
+  existing rows and the Live API voice kiosk's `create_preorder` calls unaffected), visible on both
+  the checkout confirmation and My Account's order history.
+- **Sign-up stays without real customer auth** — the new dedicated `/product-a/signup` screen
+  collects email + password for a real-feeling flow, but neither is persisted or checked; it still
+  mints a `cust_XXXXX` via the existing `create_customer()` RPC. Building real customer accounts
+  (Supabase Auth, an `email` column) was scoped out as comparable in size to the staff role/claim
+  work already deferred above, and would have expanded CLAUDE.md's locked data contract.
+- **Loyalty balance "real-time" update is a 20s poll**, not a Realtime subscription — `customers`
+  is deliberately not anon-`SELECT`-able (0002's reasoning), so there's no RLS-safe channel to
+  subscribe to without reopening that table to broad reads. Polling was judged the safe
+  approximation rather than weakening a previously-hardened policy.
+
+**Also fixed along the way:** the 2026-08-26 QA pass's deferred "site nav overflows at 375px with
+no fade/arrow hinting it's scrollable" item — added a scroll-fade gradient hint, confirmed via
+browser that all 4 tabs remain reachable by scrolling. The other three items from that QA pass
+(homepage status card copy, pre-order form's stale-error-message bug, and slow Gemini response
+UX) are still open — the second one is arguably moot now since the single-item pre-order form it
+referred to no longer exists (replaced by the cart/checkout flow this session), but wasn't
+re-verified against the new checkout form specifically.
+
+**Not verified live:** Product B's staff dashboard changes (StaffNav tabs, StampBadge stock rows,
+removed duplicate sign-out button) — build/lint/typecheck pass and the JSX was reviewed, but this
+session had no staff account password to actually sign in and confirm the dashboard renders
+correctly, same recurring gap as prior sessions. Also unverified: the pre-existing $0.00 price bug
+on two staff-added books (flagged 2026-08-26, still open, unrelated to this session's changes) is
+now more visible since those books show a "$0.00" price tag on the redesigned, larger catalog
+cards.
