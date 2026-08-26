@@ -482,3 +482,48 @@ system depending on the ISBN being real; not worth the risk for the cosmetic-onl
 **Not fixed:** the root cause (why 3 of 6 originally-seeded books got wrong ISBNs) wasn't
 investigated — likely a copy-paste or fuzzy-match error in whatever process seeded the original
 6-book catalog, before this session's `searchBookCandidates`-based add-book flow existed.
+
+---
+
+## Product detail drawer, NYC Events with real RSVP, Books/Gifts/Events preview nav, Staff tabs
+
+**What:** The largest single spec this project has taken in one pass — five sections in one user
+message: nav right-alignment + bigger cart + Books/Gifts/Events top-level menus, a product detail
+drawer for books/gifts, a full NYC author Events feature with mock-data fallback, Staff Inventory
+restructured into 5 tabs, and the book asset fixes (logged separately above). Reference links
+(mcnallyjackson.com) were given for functional-pattern inspiration only, explicitly not for
+colors/fonts — not fetched; the existing warm palette/StampBadge system was used throughout
+instead of introducing a second visual language.
+
+**Why:** Direct user request, structured as a numbered spec.
+
+**Status (2026-08-26 build):** All 5 sections done, 4 commits. What's real vs. what's UI-only:
+- **Books/Gifts/Events nav** (`components/nav-menu.tsx`'s new `NavPreviewMenu`) actually filters
+  the catalog server-side via `/product-a?category=books|gifts` (not just a scroll anchor) —
+  verified live. My Account/Support Center moved right, cart icon enlarged 44px->48px.
+- **Product detail drawer** (`components/product-drawer.tsx` + `-provider.tsx`) opens on clicking
+  a book or gift card (not its Add to Cart button). Gifts show specs, no cart CTA — consistent
+  with CLAUDE.md's browse-only merchandise rule. Verified live for both book and gift cards.
+- **Events is a real feature, not mock data** — the fallback JSON schema in the spec was never
+  needed. `0015_events_details_and_rsvp.sql` extended the existing `author_events` table
+  (author_name, location) and, notably, wired up `event_tickets` for the first time since
+  `0001_initial_schema.sql` first defined it — RSVP mints a real `tkt_XXXXX` via a new
+  `create_event_ticket` RPC (idempotent, same SECURITY DEFINER pattern as `create_preorder`).
+  Verified live end-to-end: RSVP'd for real, got a ticket, reloaded and confirmed "You're going"
+  persists. Also fixed a real pre-existing bug found while touching this: `EventTicket`'s
+  `event_title` field in `types/schema.ts` never matched the actual table (`event_id`, a uuid FK)
+  — dead code until this session gave it a real caller.
+- **Staff Inventory tabs**: all 5 named tabs built (`role="tablist"`), Add a Book gained optional
+  Description/Cover Asset URL fields that skip the Google Books auto-fetch when filled in. **Not
+  verified live** — same recurring gap as every Product B change this session, no staff account
+  password available in this environment.
+
+**Open follow-ups, not done this session:**
+- The Events preview menu shows static description text, not a live "next event" preview — a
+  richer mega-menu would need the root layout to fetch event data server-side, deferred as
+  disproportionate polish for a nav hover panel.
+- No staff UI to create/edit events yet — the 3 seeded events are the only ones that exist; adding
+  one requires a manual SQL insert, same starting point `books`/`merchandise` had before their
+  add-flows were built.
+- Someone with the Product B staff password should do one real pass through: the 5-tab dashboard,
+  the Google Books search flow, and the new Description/Cover Asset URL fields.
