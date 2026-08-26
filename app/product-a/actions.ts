@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Product A's Server Actions. Mutations (createPreorderAction,
+ * Product A's Server Actions. Mutations (checkoutAction,
  * signUpCustomerAction) go through getServiceRoleClient() per
  * lib/supabase.ts's rule, since neither create_preorder nor
  * create_customer is anon-grantable — the browser never calls Supabase
@@ -12,65 +12,99 @@
  */
 
 import { getServerClient, getServiceRoleClient } from "@/lib/supabase-server";
-import { CUSTOMER_ID_REGEX, createPreorderRequestSchema } from "@/types/schema";
+import { CUSTOMER_ID_REGEX, checkoutRequestSchema } from "@/types/schema";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type CreatePreorderResult =
-  | { ok: true; orderId: string; rewardPoints: number | null }
-  | { ok: false; message: string };
-
-export async function createPreorderAction(
-  input: unknown
-): Promise<CreatePreorderResult> {
-  const parsed = createPreorderRequestSchema.safeParse(input);
-  if (!parsed.success) {
-    return {
-      ok: false,
-      message: "Please check the customer ID, title, and quantity, then try again.",
-    };
+async function placeSingleOrder(
+  supabase: SupabaseClient,
+  args: {
+    customer_id: string;
+    isbn: string;
+    quantity: number;
+    pickup_date: string;
+    pickup_window: string;
   }
-  const { customer_id, isbn, quantity } = parsed.data;
-
-  const supabase = getServiceRoleClient();
+): Promise<{ ok: true; orderId: string } | { ok: false; message: string }> {
   const { data, error } = await supabase.rpc("create_preorder", {
-    p_customer_id: customer_id,
-    p_isbn: isbn,
-    p_quantity: quantity,
+    p_customer_id: args.customer_id,
+    p_isbn: args.isbn,
+    p_quantity: args.quantity,
+    p_pickup_date: args.pickup_date,
+    p_pickup_window: args.pickup_window,
   });
 
   if (error) {
     // create_preorder raises two distinct INSUFFICIENT_STOCK messages
-    // (see supabase/migrations/0002_rls_and_functions.sql) — surface each
-    // as its own copy rather than one generic "order failed" message.
+    // (see supabase/migrations/0011_loyalty_stamps.sql) — surface each as
+    // its own copy rather than one generic "order failed" message.
     if (error.message.includes("has not been inventoried yet")) {
       return {
         ok: false,
-        message:
-          "This title hasn't been inventoried yet — a bookseller can check current stock in person.",
+        message: "hasn't been inventoried yet — a bookseller can check current stock in person.",
       };
     }
     const shortage = error.message.match(/only (\d+) of/);
     if (shortage) {
-      return { ok: false, message: `Only ${shortage[1]} left in stock.` };
+      return { ok: false, message: `only ${shortage[1]} left in stock.` };
     }
-    return {
-      ok: false,
-      message: "Something went wrong placing your pre-order. Please try again.",
-    };
+    return { ok: false, message: "something went wrong placing this item. Please try again." };
+  }
+
+  return { ok: true, orderId: data as string };
+}
+
+export interface CheckoutLineResult {
+  isbn: string;
+  ok: boolean;
+  orderId?: string;
+  message?: string;
+}
+
+export type CheckoutResult =
+  | { ok: true; lines: CheckoutLineResult[]; rewardPoints: number | null }
+  | { ok: false; message: string };
+
+/**
+ * The cart drawer's multi-item checkout. Loops create_preorder once per
+ * line item — sequentially, not Promise.all, so a shared customer_id's
+ * reward_points increments don't race against each other — rather than a
+ * single whole-cart RPC: each item keeps its own atomic stock check
+ * (SELECT FOR UPDATE per row already), and one sold-out item doesn't fail
+ * the rest of the cart, it just reports its own failure alongside the
+ * others' successes.
+ */
+export async function checkoutAction(input: unknown): Promise<CheckoutResult> {
+  const parsed = checkoutRequestSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: "Please check your cart, customer ID, and pickup time, then try again." };
+  }
+  const { customer_id, items, pickup_date, pickup_window } = parsed.data;
+
+  const supabase = getServiceRoleClient();
+  const lines: CheckoutLineResult[] = [];
+  for (const item of items) {
+    const result = await placeSingleOrder(supabase, {
+      customer_id,
+      isbn: item.isbn,
+      quantity: item.quantity,
+      pickup_date,
+      pickup_window,
+    });
+    lines.push(
+      result.ok
+        ? { isbn: item.isbn, ok: true, orderId: result.orderId }
+        : { isbn: item.isbn, ok: false, message: result.message }
+    );
   }
 
   // Best-effort: surface the fresh stamp count alongside the confirmation.
-  // create_preorder() (0011_loyalty_stamps.sql) already incremented it —
-  // this is just a read, so a failure here must not undo or hide the
-  // successful order.
+  // Each successful create_preorder call already incremented it — this is
+  // just a read, so a failure here must not undo or hide the order(s).
   const { data: balance } = await supabase.rpc("get_loyalty_balance", {
     p_customer_id: customer_id,
   });
 
-  return {
-    ok: true,
-    orderId: data as string,
-    rewardPoints: typeof balance === "number" ? balance : null,
-  };
+  return { ok: true, lines, rewardPoints: typeof balance === "number" ? balance : null };
 }
 
 export type SignUpCustomerResult =
@@ -102,8 +136,11 @@ export interface AccountOrder {
   order_id: string;
   isbn: string;
   book_title: string;
+  cover_url: string | null;
   quantity: number;
   order_status: string;
+  pickup_date: string | null;
+  pickup_window: string | null;
   created_at: string;
 }
 
@@ -147,19 +184,30 @@ export async function getAccountAction(customerId: string): Promise<GetAccountRe
       isbn: string;
       quantity: number;
       order_status: string;
+      pickup_date: string | null;
+      pickup_window: string | null;
       created_at: string;
     }>) ?? [];
 
   const isbns = [...new Set(orders.map((o) => o.isbn))];
-  let titleByIsbn: Record<string, string> = {};
+  let bookByIsbn: Record<string, { book_title: string; cover_url: string | null }> = {};
   if (isbns.length > 0) {
-    const { data: books } = await supabase.from("books").select("isbn, book_title").in("isbn", isbns);
-    titleByIsbn = Object.fromEntries((books ?? []).map((b) => [b.isbn, b.book_title]));
+    const { data: books } = await supabase
+      .from("books")
+      .select("isbn, book_title, cover_url")
+      .in("isbn", isbns);
+    bookByIsbn = Object.fromEntries(
+      (books ?? []).map((b) => [b.isbn, { book_title: b.book_title, cover_url: b.cover_url }])
+    );
   }
 
   return {
     ok: true,
     rewardPoints: balance as number,
-    orders: orders.map((o) => ({ ...o, book_title: titleByIsbn[o.isbn] ?? o.isbn })),
+    orders: orders.map((o) => ({
+      ...o,
+      book_title: bookByIsbn[o.isbn]?.book_title ?? o.isbn,
+      cover_url: bookByIsbn[o.isbn]?.cover_url ?? null,
+    })),
   };
 }

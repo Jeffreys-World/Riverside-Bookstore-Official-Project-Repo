@@ -117,7 +117,53 @@ export interface Order {
   ISBN: string;
   quantity: number;
   order_status: OrderStatus;
+  pickup_date: string | null; // YYYY-MM-DD, null until checkout adds it (0014_orders_pickup_slot.sql)
+  pickup_window: string | null; // one of PICKUP_WINDOWS below, null until checkout adds it
 }
+
+// ---------------------------------------------------------------------------
+// Pickup scheduling — checkout's date + time-window selector.
+// Windows are fixed, not derived per-day from STORE_HOURS
+// (lib/store-info.ts) — the store's shortest open day (Sunday, 11am-5pm)
+// still covers most of these, and exact per-day window validation isn't
+// worth the complexity for a pay-in-person pickup slot that's a courtesy
+// scheduling aid, not a hard commitment.
+// ---------------------------------------------------------------------------
+
+export const PICKUP_WINDOWS = [
+  "10:00 AM – 1:00 PM",
+  "1:00 PM – 4:00 PM",
+  "4:00 PM – 6:30 PM",
+] as const;
+export type PickupWindow = (typeof PICKUP_WINDOWS)[number];
+export const pickupWindowSchema = z.enum(PICKUP_WINDOWS);
+
+export const PICKUP_LOCATION = {
+  name: "Riverside Books",
+  addressLine1: "47-10 Austell Place, 2nd Floor",
+  addressLine2: "Long Island City, NY 11101",
+} as const;
+
+// ---------------------------------------------------------------------------
+// Order status — display label + StampBadge tone (UI layer only).
+// ---------------------------------------------------------------------------
+
+export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
+  pending: "Pending",
+  preorder: "Reserved for pickup",
+  shipped: "Shipped",
+  completed: "Picked up",
+};
+
+export const ORDER_STATUS_TONE: Record<
+  OrderStatus,
+  "positive" | "pending" | "negative" | "neutral"
+> = {
+  pending: "pending",
+  preorder: "pending",
+  shipped: "positive",
+  completed: "positive",
+};
 
 // ---------------------------------------------------------------------------
 // Zod request schemas for the shared, cross-product operations
@@ -130,6 +176,26 @@ export const createPreorderRequestSchema = z.object({
   quantity: z.number().int().positive(),
 });
 export type CreatePreorderRequest = z.infer<typeof createPreorderRequestSchema>;
+
+// checkoutRequestSchema — the cart drawer's multi-item checkout
+// (app/product-a/checkout/actions.ts's checkoutAction). Submits one
+// create_preorder RPC call per line item (see that file's comment for why:
+// each item's stock check stays atomically correct, and one sold-out item
+// doesn't fail the whole cart) rather than a single multi-row RPC.
+export const checkoutRequestSchema = z.object({
+  customer_id: z.string().regex(CUSTOMER_ID_REGEX),
+  items: z
+    .array(
+      z.object({
+        isbn: z.string().regex(ISBN13_REGEX),
+        quantity: z.number().int().positive(),
+      })
+    )
+    .min(1),
+  pickup_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  pickup_window: pickupWindowSchema,
+});
+export type CheckoutRequest = z.infer<typeof checkoutRequestSchema>;
 
 // addBookRequestSchema — Product B's staff "add book" flow
 // (app/product-b/actions.ts's addBookAction). stock_quantity is optional
