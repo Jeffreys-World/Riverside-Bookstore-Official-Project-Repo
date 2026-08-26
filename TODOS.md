@@ -8,7 +8,9 @@
 
 **Fix:** Give each field in `addBookRequestSchema` an explicit `.message()`, or surface `parsed.error.issues[0]?.path` alongside the message so staff know which field to fix.
 
-**Status:** Deferred (Standard-tier QA fixes medium+ only).
+**Status: Fixed** by `/qa --exhaustive` on 2026-08-26. Every validator in `addBookRequestSchema`
+and `addMerchandiseRequestSchema` now carries an explicit message (e.g. "ISBN must be a valid
+13-digit ISBN starting with 978 or 979."). Regression test in `types/schema.regression-1.test.ts`.
 
 ---
 
