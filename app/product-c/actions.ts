@@ -14,7 +14,7 @@
  */
 
 import type { Content, Part } from "@google/genai";
-import { getGeminiClient, TEXT_MODEL } from "@/lib/gemini";
+import { generateTextWithFallback } from "@/lib/gemini";
 import { getServerClient } from "@/lib/supabase-server";
 import { productCToolDeclarations } from "@/lib/live-tools";
 import { evaluateStockStatus } from "@/lib/inventory";
@@ -37,7 +37,20 @@ Keep answers short and conversational. If a question is outside what you can
 check (stock, order status, events, hours, policies), say so plainly rather
 than making something up.`;
 
-async function executeTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+export interface SupportChatBook {
+  isbn: string;
+  book_title: string;
+  cover_url: string | null;
+}
+
+async function executeTool(
+  name: string,
+  args: Record<string, unknown>,
+  // Covers for any books check_inventory actually matched, kept separate
+  // from the tool response text below — the model only needs
+  // title/author/stock/status to answer, never the raw image URL.
+  matchedBooks: SupportChatBook[]
+): Promise<unknown> {
   const supabase = getServerClient();
 
   if (name === "check_inventory") {
@@ -49,13 +62,16 @@ async function executeTool(name: string, args: Record<string, unknown>): Promise
 
     const { data } = await supabase
       .from("books")
-      .select("isbn, book_title, author_name, stock_quantity")
+      .select("isbn, book_title, author_name, stock_quantity, cover_url")
       .or(`isbn.eq.${query},book_title.ilike.%${query}%`)
       .limit(5);
 
     const rows = data ?? [];
     const flagged = evaluateStockStatus(
       rows.map((b) => ({ isbn: b.isbn, stockQuantity: b.stock_quantity }))
+    );
+    matchedBooks.push(
+      ...rows.map((b) => ({ isbn: b.isbn, book_title: b.book_title, cover_url: b.cover_url }))
     );
     return {
       matches: rows.map((b, i) => ({
@@ -95,35 +111,60 @@ async function executeTool(name: string, args: Record<string, unknown>): Promise
   return { error: `Unknown tool: ${name}` };
 }
 
-export async function askSupportChatbotAction(question: string): Promise<string> {
+export interface SupportChatAnswer {
+  answer: string;
+  books: SupportChatBook[];
+}
+
+function dedupeBooks(books: SupportChatBook[]): SupportChatBook[] {
+  const byIsbn = new Map<string, SupportChatBook>();
+  for (const b of books) if (!byIsbn.has(b.isbn)) byIsbn.set(b.isbn, b);
+  return [...byIsbn.values()];
+}
+
+export async function askSupportChatbotAction(question: string): Promise<SupportChatAnswer> {
   const trimmed = question.trim();
   if (!trimmed) {
-    return "Ask me anything about stock, an order, upcoming events, hours, or policies.";
+    return {
+      answer: "Ask me anything about stock, an order, upcoming events, hours, or policies.",
+      books: [],
+    };
   }
 
-  const ai = getGeminiClient();
   const contents: Content[] = [{ role: "user", parts: [{ text: trimmed }] }];
   const config = {
     systemInstruction: SYSTEM_INSTRUCTION,
     tools: [{ functionDeclarations: productCToolDeclarations }],
   };
+  const matchedBooks: SupportChatBook[] = [];
 
   try {
-    const first = await ai.models.generateContent({ model: TEXT_MODEL, contents, config });
+    const first = await generateTextWithFallback({ contents, config });
 
     const calls = first.functionCalls;
     if (!calls || calls.length === 0) {
-      return first.text ?? "Sorry, I couldn't come up with an answer just now.";
+      return {
+        answer: first.text ?? "Sorry, I couldn't come up with an answer just now.",
+        books: [],
+      };
     }
 
-    const modelParts: Part[] = calls.map((call) => ({ functionCall: call }));
+    // Replay the model's actual response content, not a reconstruction
+    // from first.functionCalls — that getter returns bare FunctionCall
+    // objects and drops the sibling thoughtSignature field each Part
+    // carries. gemini-3.6-flash is a "thinking" model that requires that
+    // signature to be echoed back on the next turn; omitting it 400s with
+    // "Function call is missing a thought_signature".
+    const modelParts: Part[] =
+      first.candidates?.[0]?.content?.parts ?? calls.map((call) => ({ functionCall: call }));
     contents.push({ role: "model", parts: modelParts });
 
     const responseParts: Part[] = [];
     for (const call of calls) {
       const result = await executeTool(
         call.name ?? "",
-        (call.args ?? {}) as Record<string, unknown>
+        (call.args ?? {}) as Record<string, unknown>,
+        matchedBooks
       );
       responseParts.push({
         functionResponse: { name: call.name ?? "", response: { result } },
@@ -131,10 +172,16 @@ export async function askSupportChatbotAction(question: string): Promise<string>
     }
     contents.push({ role: "user", parts: responseParts });
 
-    const second = await ai.models.generateContent({ model: TEXT_MODEL, contents, config });
-    return second.text ?? "Sorry, I couldn't come up with an answer just now.";
+    const second = await generateTextWithFallback({ contents, config });
+    return {
+      answer: second.text ?? "Sorry, I couldn't come up with an answer just now.",
+      books: dedupeBooks(matchedBooks),
+    };
   } catch (err) {
     console.error("Support chatbot error:", err);
-    return "Something went wrong answering that — please try again, or ask a bookseller in person.";
+    return {
+      answer: "Something went wrong answering that — please try again, or ask a bookseller in person.",
+      books: [],
+    };
   }
 }

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { askSupportChatbotAction } from "./actions";
+import { askSupportChatbotAction, type SupportChatBook } from "./actions";
 
 interface Exchange {
   question: string;
   answer: string;
+  books: SupportChatBook[];
 }
 
 export function ChatWidget() {
@@ -21,8 +22,8 @@ export function ChatWidget() {
     setPending(true);
     setQuestion("");
     try {
-      const answer = await askSupportChatbotAction(q);
-      setHistory((prev) => [...prev, { question: q, answer }]);
+      const result = await askSupportChatbotAction(q);
+      setHistory((prev) => [...prev, { question: q, answer: result.answer, books: result.books }]);
     } finally {
       setPending(false);
     }
@@ -37,6 +38,31 @@ export function ChatWidget() {
             <p className="rounded-lg border border-ink/10 bg-white p-3 text-ink/80">
               {ex.answer}
             </p>
+            {ex.books.length > 0 && (
+              <div className="flex gap-3">
+                {ex.books.map((b) => (
+                  <div key={b.isbn} className="w-14 flex-none">
+                    {b.cover_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={b.cover_url}
+                        alt=""
+                        loading="lazy"
+                        className="h-20 w-14 rounded object-cover"
+                      />
+                    ) : (
+                      <div
+                        aria-hidden
+                        className="flex h-20 w-14 items-center justify-center rounded bg-ink/5 text-[9px] text-ink/40"
+                      >
+                        No cover
+                      </div>
+                    )}
+                    <p className="mt-1 truncate text-[10px] text-ink/60">{b.book_title}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
         {pending && <p className="text-sm text-ink/50">Checking…</p>}

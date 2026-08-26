@@ -9,7 +9,7 @@ export default async function ProductDPage() {
   const supabase = getServerClient();
   const { data: books } = await supabase
     .from("books")
-    .select("isbn, book_title, author_name")
+    .select("isbn, book_title, author_name, cover_url")
     .order("book_title");
 
   return (

@@ -29,7 +29,7 @@ export default async function ProductBPage({
       .select("order_id, customer_id, isbn, quantity, order_status, created_at")
       .eq("order_status", "preorder")
       .order("created_at", { ascending: false }),
-    supabase.from("books").select("isbn, book_title, author_name, stock_quantity"),
+    supabase.from("books").select("isbn, book_title, author_name, stock_quantity, cover_url"),
   ]);
 
   return (

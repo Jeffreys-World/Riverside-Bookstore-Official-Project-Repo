@@ -10,7 +10,7 @@
  * they want to actually publish elsewhere.
  */
 
-import { getGeminiClient, TEXT_MODEL } from "@/lib/gemini";
+import { generateTextWithFallback } from "@/lib/gemini";
 
 export interface MarketingContentResult {
   instagram: string;
@@ -60,9 +60,7 @@ export async function generateMarketingContentAction(
   }
 
   try {
-    const ai = getGeminiClient();
-    const response = await ai.models.generateContent({
-      model: TEXT_MODEL,
+    const response = await generateTextWithFallback({
       contents: [{ role: "user", parts: [{ text: PROMPT_TEMPLATE(trimmed) }] }],
     });
 

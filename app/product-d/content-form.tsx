@@ -7,6 +7,7 @@ interface BookRow {
   isbn: string;
   book_title: string;
   author_name: string;
+  cover_url: string | null;
 }
 
 export function ContentForm({ books }: { books: BookRow[] }) {
@@ -59,6 +60,31 @@ export function ContentForm({ books }: { books: BookRow[] }) {
             </option>
           ))}
         </select>
+
+        {selectedBook && (
+          <div className="mt-3 flex items-center gap-3">
+            {selectedBook.cover_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={selectedBook.cover_url}
+                alt=""
+                loading="lazy"
+                className="h-20 w-14 flex-none rounded object-cover"
+              />
+            ) : (
+              <div
+                aria-hidden
+                className="flex h-20 w-14 flex-none items-center justify-center rounded bg-ink/5 text-[10px] text-ink/40"
+              >
+                No cover
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="truncate font-medium text-ink">{selectedBook.book_title}</p>
+              <p className="truncate text-sm text-ink/60">{selectedBook.author_name}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div>

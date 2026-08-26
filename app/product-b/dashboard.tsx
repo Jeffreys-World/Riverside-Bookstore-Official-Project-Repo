@@ -24,6 +24,7 @@ interface BookRow {
   book_title: string;
   author_name: string;
   stock_quantity: number | null;
+  cover_url: string | null;
 }
 
 const STATUS_LABEL: Record<FlaggedInventoryRecord["status"], string> = {
@@ -183,10 +184,30 @@ export function Dashboard({
             {flaggedBooks.map((f) => (
               <li
                 key={f.isbn}
-                className="flex items-center justify-between rounded-lg border border-ink/10 bg-white p-4"
+                className="flex items-center justify-between gap-3 rounded-lg border border-ink/10 bg-white p-4"
               >
-                <span className="text-ink">{booksByIsbn[f.isbn]?.book_title ?? f.isbn}</span>
-                <span className="flex items-center gap-3">
+                <span className="flex min-w-0 items-center gap-3">
+                  {booksByIsbn[f.isbn]?.cover_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={booksByIsbn[f.isbn]?.cover_url ?? undefined}
+                      alt=""
+                      loading="lazy"
+                      className="h-14 w-10 flex-none rounded object-cover"
+                    />
+                  ) : (
+                    <div
+                      aria-hidden
+                      className="flex h-14 w-10 flex-none items-center justify-center rounded bg-ink/5 text-[9px] text-ink/40"
+                    >
+                      No cover
+                    </div>
+                  )}
+                  <span className="truncate text-ink">
+                    {booksByIsbn[f.isbn]?.book_title ?? f.isbn}
+                  </span>
+                </span>
+                <span className="flex flex-none items-center gap-3">
                   <span className="font-mono text-sm text-ink/60">
                     {f.stockQuantity ?? "—"}
                   </span>
