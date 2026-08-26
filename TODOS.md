@@ -220,3 +220,51 @@ to the live Supabase project yet (same recurring gap — no CLI credentials in t
 there's no local Supabase CLI available either, so none of this was exercised in-browser against
 a real database this session. Run `supabase db push`, then walk each product manually before
 calling this closed.
+
+**Status (2026-08-26, later):** Verified live. User installed the Supabase CLI, linked, and
+pushed — hit two real snags along the way, both now documented: `link`/`push` are cwd-relative
+(first attempt ran from `~`, silently created `~/supabase/.temp` instead of touching the repo),
+and the remote's migration history had zero rows for any version including 0001-0007 despite
+those being genuinely live, fixed via `supabase migration repair --status applied 0001..0007`
+before 0008-0012 would push cleanly. After that: confirmed `books.price`/`merchandise` live via
+direct REST calls, confirmed `fetch_pending_preorders` 401s for anon, and drove a real signup ->
+pre-order round trip through the browser (Playwright + a manually-located Chrome-for-Testing
+binary, since `chromium-cli` wasn't available and the npx-installed `playwright` package's cached
+browser version didn't match) — got a genuine new customer id and a `reward_points` increment to
+1, independently confirmed via `get_loyalty_balance`. Two books added via the staff form before
+this session's price migration show `price: 0.00` (the hardcoded backfill only covered the
+original 6 seed ISBNs) — needs a manual price fix via Product B's dashboard, still open.
+
+---
+
+## Add Product A "My Account" page, site-wide nav, and Product C quick-info panel
+
+**What:** Three asks in one message: (1) a customer account page on Product A showing order
+history and loyalty points, (2) a site-wide tab nav both customers and staff can use to move
+between products, (3) Product C should surface store hours/return policy/event schedule directly
+rather than only through the chatbot.
+
+**Why:** User request after confirming the pain-point-review fixes worked live.
+
+**Status (2026-08-26 build):** Done, verified live. `0013_customer_order_history.sql` adds
+`get_customer_orders()` (same anon-safe SECURITY DEFINER pattern as `get_loyalty_balance` — safe
+because the caller must already know the exact customer_id). New `/product-a/account` route
+reads it plus `get_loyalty_balance`, joins book titles, and remembers the customer's id in
+localStorage (`lib/customer-id-storage.ts`) after signup or a successful pre-order so a return
+visit auto-loads. `app/site-nav.tsx` renders in the root layout on every page: Order & Loyalty /
+My Account / Support / Marketing / Staff, active tab highlighted via `usePathname`. Product C's
+page now queries `author_events` and shows hours/policy/events in a visible panel above the chat,
+not just in the hidden system prompt.
+
+**Real bug found and fixed along the way:** testing the account page's error path hit an actual
+crash — a multi-argument `console.error(msg, errorObj)` call inside a Server Action made the
+Console Ninja VSCode extension's console hook throw (`Cannot read properties of null/undefined
+(reading 'stack')`), turning an intended graceful `{ ok: false }` response into a real 500.
+Reproduced identically regardless of whether the extra args were raw error objects or plain
+strings — only argument *count* mattered. Fixed by collapsing every `console.error` added this
+session (4 call sites) to a single template-literal string. Worth remembering for any future
+server-side logging in this repo on this machine.
+
+Build/lint/typecheck/vitest all pass; full browser verification done for every new surface
+(nav on all 5 pages, Product C panel, and a real signup -> account-page round trip showing the
+actual order and point).
