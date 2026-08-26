@@ -153,3 +153,32 @@ succeeds, then updates `cover_url`/`description` on that row. A metadata-fetch f
 not roll back or block the book insert; the row is left with `cover_url`/`description`
 still null, the same already-valid, already-rendered state a never-backfilled book is in
 (see `0005_add_book_metadata.sql`). No manual script re-run needed for books added this way.
+
+---
+
+## Add book pricing and a merchandise (cards/gifts) catalog
+
+**What:** `books` had no `price` column at all, and the schema had no table for the cards and
+small gifts the business description mentions the store sells — only `books` existed.
+
+**Why:** Flagged by the user 2026-08-26 while reviewing product coverage against the brief:
+"we do not have data for the other products of the books store, neither pricing of each book
+items."
+
+**Depends on:** None.
+
+**Status (2026-08-26 build):** Done. `0008_add_book_price.sql` adds `price numeric(10,2)` to
+`books` (seeded for the 6 demo titles). `0009_merchandise.sql` adds a separate `merchandise`
+table (id, item_name, category `card`/`gift`, price, stock_quantity) — separate from `books`
+since these items have no ISBN — with RLS mirroring `books` (anon+authenticated SELECT,
+authenticated-only INSERT) and 6 seed rows. `lib/inventory.ts`'s `InventoryRecord.isbn` field
+was generalized to `id` so `evaluateStockStatus`/`sortBySeverity` work for both books and
+merchandise without a duplicate implementation. Product A now shows book prices and a read-only
+"Cards & Gifts" browse section (no pre-order — orders stay book-only per the brief). Product B's
+add-book form now requires a price, and the dashboard adds a live "Merchandise stock" section
+(same Realtime pattern as books).
+
+**Still open:** No staff "add merchandise" flow exists yet — the 6 seed rows are the only way
+merchandise data gets in today, same starting point `books` had before the add-book flow was
+built. Migrations still need `supabase db push` against the live project (no CLI credentials in
+this session, same recurring gap as every prior migration in this file).

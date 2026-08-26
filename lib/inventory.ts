@@ -9,12 +9,16 @@
  *
  * If you're building Product B's dashboard UI, import evaluateStockStatus
  * and sortBySeverity from here rather than reimplementing them.
+ *
+ * `id` is a generic row identifier (ISBN for books, uuid for merchandise) —
+ * this module doesn't care what kind of item it's flagging, only its
+ * stock_quantity.
  */
 
 import type { StockQuantity, StockStatus } from "@/types/schema";
 
 export interface InventoryRecord {
-  isbn: string;
+  id: string;
   stockQuantity: StockQuantity;
 }
 

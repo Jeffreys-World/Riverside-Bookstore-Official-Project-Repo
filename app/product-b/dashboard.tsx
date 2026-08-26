@@ -25,6 +25,15 @@ interface BookRow {
   author_name: string;
   stock_quantity: number | null;
   cover_url: string | null;
+  price: number;
+}
+
+interface MerchandiseRow {
+  id: string;
+  item_name: string;
+  category: string;
+  price: number;
+  stock_quantity: number | null;
 }
 
 const STATUS_LABEL: Record<FlaggedInventoryRecord["status"], string> = {
@@ -34,6 +43,11 @@ const STATUS_LABEL: Record<FlaggedInventoryRecord["status"], string> = {
   in_stock: "In stock",
 };
 
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
+
 // How long a newly-arrived pre-order stays highlighted before fading back
 // to the normal row style — long enough to notice, short enough not to
 // clutter the list once staff has seen it.
@@ -42,17 +56,21 @@ const ARRIVAL_HIGHLIGHT_MS = 2500;
 export function Dashboard({
   initialOrders,
   initialBooksByIsbn,
+  initialMerchandiseById,
   addBookError,
   bookAdded,
 }: {
   initialOrders: OrderRow[];
   initialBooksByIsbn: Record<string, BookRow>;
+  initialMerchandiseById: Record<string, MerchandiseRow>;
   addBookError?: string;
   bookAdded?: string;
 }) {
   const [supabase] = useState(() => getBrowserClient());
   const [orders, setOrders] = useState<OrderRow[]>(initialOrders);
   const [booksByIsbn, setBooksByIsbn] = useState<Record<string, BookRow>>(initialBooksByIsbn);
+  const [merchandiseById, setMerchandiseById] =
+    useState<Record<string, MerchandiseRow>>(initialMerchandiseById);
   const [justArrived, setJustArrived] = useState<Set<string>>(new Set());
   // Seeded from the ?bookAdded= redirect param so a screen reader
   // announces a successful add the same way it announces a live pre-order
@@ -101,11 +119,28 @@ export function Dashboard({
     }
   );
 
-  const reconnecting = ordersStatus !== "connected" || booksStatus !== "connected";
+  const merchandiseStatus = useRealtimeSubscription(
+    supabase,
+    "product-b-merchandise",
+    { event: "*", schema: "public", table: "merchandise" },
+    (payload) => {
+      const row = payload.new as unknown as MerchandiseRow;
+      setMerchandiseById((prev) => ({ ...prev, [row.id]: row }));
+    }
+  );
+
+  const reconnecting =
+    ordersStatus !== "connected" || booksStatus !== "connected" || merchandiseStatus !== "connected";
 
   const flaggedBooks = sortBySeverity(
     evaluateStockStatus(
-      Object.values(booksByIsbn).map((b) => ({ isbn: b.isbn, stockQuantity: b.stock_quantity }))
+      Object.values(booksByIsbn).map((b) => ({ id: b.isbn, stockQuantity: b.stock_quantity }))
+    )
+  );
+
+  const flaggedMerchandise = sortBySeverity(
+    evaluateStockStatus(
+      Object.values(merchandiseById).map((m) => ({ id: m.id, stockQuantity: m.stock_quantity }))
     )
   );
 
@@ -183,14 +218,14 @@ export function Dashboard({
           <ul className="mt-4 space-y-2">
             {flaggedBooks.map((f) => (
               <li
-                key={f.isbn}
+                key={f.id}
                 className="flex items-center justify-between gap-3 rounded-lg border border-ink/10 bg-white p-4"
               >
                 <span className="flex min-w-0 items-center gap-3">
-                  {booksByIsbn[f.isbn]?.cover_url ? (
+                  {booksByIsbn[f.id]?.cover_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={booksByIsbn[f.isbn]?.cover_url ?? undefined}
+                      src={booksByIsbn[f.id]?.cover_url ?? undefined}
                       alt=""
                       loading="lazy"
                       className="h-14 w-10 flex-none rounded object-cover"
@@ -204,10 +239,53 @@ export function Dashboard({
                     </div>
                   )}
                   <span className="truncate text-ink">
-                    {booksByIsbn[f.isbn]?.book_title ?? f.isbn}
+                    {booksByIsbn[f.id]?.book_title ?? f.id}
                   </span>
                 </span>
                 <span className="flex flex-none items-center gap-3">
+                  {booksByIsbn[f.id]?.price !== undefined && (
+                    <span className="font-mono text-sm text-ink/50">
+                      {currencyFormatter.format(booksByIsbn[f.id]?.price ?? 0)}
+                    </span>
+                  )}
+                  <span className="font-mono text-sm text-ink/60">
+                    {f.stockQuantity ?? "—"}
+                  </span>
+                  <span className="text-sm text-ink/60">{STATUS_LABEL[f.status]}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="mt-12">
+        <h2 className="font-serif text-xl text-ink">Merchandise stock</h2>
+        {flaggedMerchandise.length === 0 ? (
+          <p className="mt-4 rounded-lg border border-ink/10 bg-white p-4 text-ink/70">
+            No cards or gifts in the catalog yet.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {flaggedMerchandise.map((f) => (
+              <li
+                key={f.id}
+                className="flex items-center justify-between gap-3 rounded-lg border border-ink/10 bg-white p-4"
+              >
+                <span className="min-w-0">
+                  <span className="truncate text-ink">{merchandiseById[f.id]?.item_name ?? f.id}</span>
+                  {merchandiseById[f.id]?.category !== undefined && (
+                    <span className="ml-2 text-xs capitalize text-ink/50">
+                      {merchandiseById[f.id]?.category}
+                    </span>
+                  )}
+                </span>
+                <span className="flex flex-none items-center gap-3">
+                  {merchandiseById[f.id]?.price !== undefined && (
+                    <span className="font-mono text-sm text-ink/50">
+                      {currencyFormatter.format(merchandiseById[f.id]?.price ?? 0)}
+                    </span>
+                  )}
                   <span className="font-mono text-sm text-ink/60">
                     {f.stockQuantity ?? "—"}
                   </span>
@@ -273,6 +351,21 @@ export function Dashboard({
               min={0}
               step={1}
               placeholder="Leave blank if not yet inventoried"
+              className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+            />
+          </div>
+          <div>
+            <label htmlFor="price" className="block text-sm font-medium text-ink">
+              Price
+            </label>
+            <input
+              id="price"
+              name="price"
+              type="number"
+              min={0}
+              step={0.01}
+              required
+              placeholder="0.00"
               className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
             />
           </div>

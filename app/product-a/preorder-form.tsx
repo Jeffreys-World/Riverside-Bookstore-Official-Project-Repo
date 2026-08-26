@@ -20,6 +20,7 @@ interface BookRow {
   stock_quantity: number | null;
   cover_url: string | null;
   description: string | null;
+  price: number;
 }
 
 const STATUS_LABEL: Record<FlaggedInventoryRecord["status"], string> = {
@@ -29,11 +30,16 @@ const STATUS_LABEL: Record<FlaggedInventoryRecord["status"], string> = {
   in_stock: "In stock",
 };
 
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
+
 export function PreorderForm({ books }: { books: BookRow[] }) {
   const flagged = useMemo(
     () =>
       evaluateStockStatus(
-        books.map((b) => ({ isbn: b.isbn, stockQuantity: b.stock_quantity }))
+        books.map((b) => ({ id: b.isbn, stockQuantity: b.stock_quantity }))
       ),
     [books]
   );
@@ -46,7 +52,7 @@ export function PreorderForm({ books }: { books: BookRow[] }) {
     { kind: "success"; orderId: string } | { kind: "error"; message: string } | null
   >(null);
 
-  const selectedStatus = flagged.find((f) => f.isbn === isbn)?.status;
+  const selectedStatus = flagged.find((f) => f.id === isbn)?.status;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -105,7 +111,7 @@ export function PreorderForm({ books }: { books: BookRow[] }) {
         <legend className="block text-sm font-medium text-ink">Title</legend>
         <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {books.map((b) => {
-            const status = flagged.find((f) => f.isbn === b.isbn)?.status;
+            const status = flagged.find((f) => f.id === b.isbn)?.status;
             const selected = b.isbn === isbn;
             return (
               <label
@@ -143,6 +149,9 @@ export function PreorderForm({ books }: { books: BookRow[] }) {
                 <div className="min-w-0">
                   <p className="truncate font-medium text-ink">{b.book_title}</p>
                   <p className="truncate text-sm text-ink/60">{b.author_name}</p>
+                  <p className="mt-1 font-mono text-xs text-ink/70">
+                    {currencyFormatter.format(b.price)}
+                  </p>
                   {status && (
                     <p className="mt-1 text-xs text-ink/60">{STATUS_LABEL[status]}</p>
                   )}

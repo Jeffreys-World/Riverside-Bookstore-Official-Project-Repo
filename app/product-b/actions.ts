@@ -26,11 +26,13 @@ export async function signOutAction() {
 
 export async function addBookAction(formData: FormData) {
   const rawStock = String(formData.get("stock_quantity") ?? "").trim();
+  const rawPrice = String(formData.get("price") ?? "").trim();
   const parsed = addBookRequestSchema.safeParse({
     isbn: String(formData.get("isbn") ?? "").trim(),
     book_title: String(formData.get("book_title") ?? ""),
     author_name: String(formData.get("author_name") ?? ""),
     stock_quantity: rawStock === "" ? null : Number(rawStock),
+    price: Number(rawPrice),
   });
 
   if (!parsed.success) {
@@ -39,11 +41,11 @@ export async function addBookAction(formData: FormData) {
     );
   }
 
-  const { isbn, book_title, author_name, stock_quantity } = parsed.data;
+  const { isbn, book_title, author_name, stock_quantity, price } = parsed.data;
   const supabase = getServerClient();
   const { error } = await supabase
     .from("books")
-    .insert({ isbn, book_title, author_name, stock_quantity });
+    .insert({ isbn, book_title, author_name, stock_quantity, price });
 
   if (error) {
     redirect(`/product-b?addBookError=${encodeURIComponent(error.message)}`);

@@ -68,7 +68,7 @@ async function executeTool(
 
     const rows = data ?? [];
     const flagged = evaluateStockStatus(
-      rows.map((b) => ({ isbn: b.isbn, stockQuantity: b.stock_quantity }))
+      rows.map((b) => ({ id: b.isbn, stockQuantity: b.stock_quantity }))
     );
     matchedBooks.push(
       ...rows.map((b) => ({ isbn: b.isbn, book_title: b.book_title, cover_url: b.cover_url }))
