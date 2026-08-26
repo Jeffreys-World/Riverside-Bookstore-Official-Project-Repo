@@ -406,3 +406,43 @@ in the session was the actual full catalog, not a display bug.
 
 **Still open:** merchandise (cards/gifts) has no equivalent add flow — the 6 seed rows are still
 the only way merchandise data gets in, same gap noted in the 2026-08-26 merchandise entry above.
+
+**Status (2026-08-26, later):** Also closed the merchandise gap in the same session —
+`addMerchandiseAction` + a second form on Product B's dashboard. No migration needed: the
+`authenticated` INSERT grant + RLS policy already existed on `merchandise` (0009 set it up
+alongside the table, just never had a UI). Not verified live for the same reason as the book
+search flow — no staff password this session.
+
+---
+
+## Header/nav restructure: centered logo, My Account and Support Center gateways
+
+**What:** User feedback after the UI/UX overhaul, delivered as a structured spec: centered brand
+logo at the top of every page; remove "Order"/"Loyalty" as header titles/links (they'd only
+lived in the flat "Order & Loyalty" tab); "My Account" becomes a dropdown gateway to Customer
+Account (order history + loyalty) vs. Staff Account (inventory + marketing); "Support" renamed
+"Support Center" and becomes a dropdown to Frequently Asked Questions vs. a new Contact Us page.
+
+**Why:** Direct user request, given as an already-structured spec (Header Branding & Layout /
+Account Navigation Gateway / Support Center Updates) rather than a vague ask.
+
+**Status (2026-08-26 build):** Done, verified live (both dropdowns open/close/navigate correctly,
+Staff Account bounces to `/product-b/sign-in` when unauthenticated, no console errors, clean at
+375px). Key calls made without re-asking, since they were either explicit in the spec or
+low-risk/reversible:
+- **Logo is a styled text wordmark**, not an image file — none was provided, and a real logo image
+  can replace it later without touching layout.
+- **`/` (root) now redirects to `/product-a`** — it was an unstyled dev-status scaffold, never the
+  real customer entry point (Product A always was, via the nav). This also retires that scaffold's
+  stale "needs GOOGLE_API_KEY" copy that TODOS.md's 2026-08-26 /qa pass had flagged as misleading.
+- **Product A's h1 changed to "Shop the Catalog"** (from "Order & Loyalty") rather than removing
+  the heading entirely — a page still needs exactly one h1 for a11y/SEO structure; the words
+  "Order" and "Loyalty" just don't appear in it anymore, matching the spec's actual ask.
+- **Contact Us uses fictional placeholder contact info** (`lib/store-info.ts`'s new
+  `STORE_CONTACT`) — `.example` domain email, 555-exchange phone — same fictional-flavor status
+  the file's existing hours/policies already carry. Real values would need to be swapped in before
+  this is anything but a coursework demo.
+- Fixed the 2026-08-26 QA pass's mobile nav-overflow item as a side effect: two dropdown triggers
+  + a cart icon no longer overflow at 375px, so the scroll-fade hint added earlier this session is
+  now dead code in the old four-tab layout it was built for (removed along with the rest of the
+  old `SiteNav`).
