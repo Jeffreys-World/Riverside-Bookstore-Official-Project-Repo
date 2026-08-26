@@ -10,6 +10,7 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { evaluateStockStatus, type FlaggedInventoryRecord } from "@/lib/inventory";
+import { saveCustomerId } from "@/lib/customer-id-storage";
 import { CUSTOMER_ID_REGEX, ISBN13_REGEX } from "@/types/schema";
 import { createPreorderAction, signUpCustomerAction } from "./actions";
 
@@ -66,6 +67,7 @@ export function PreorderForm({ books }: { books: BookRow[] }) {
       const res = await signUpCustomerAction();
       if (res.ok) {
         setCustomerId(res.customerId);
+        saveCustomerId(res.customerId);
         setSignupMessage(`Your loyalty ID is ${res.customerId} — save it to check your rewards next time.`);
       } else {
         setSignupMessage(res.message);
@@ -92,6 +94,7 @@ export function PreorderForm({ books }: { books: BookRow[] }) {
     setResult(null);
     try {
       const res = await createPreorderAction({ customer_id: customerId, isbn, quantity });
+      if (res.ok) saveCustomerId(customerId);
       setResult(
         res.ok
           ? { kind: "success", orderId: res.orderId, rewardPoints: res.rewardPoints }
