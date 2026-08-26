@@ -110,7 +110,24 @@ backfill run.
 
 **Depends on:** None technically, but pairs naturally with the auto-backfill item below.
 
-**Status:** Not started.
+**Status (2026-08-26 build):** Built, and paired with the auto-backfill item below in the
+same change since they share one insert path. Product B's dashboard now has an "Add a book"
+form (`app/product-b/dashboard.tsx`) posting to `addBookAction`
+(`app/product-b/actions.ts`), validated against a new `addBookRequestSchema` in
+`types/schema.ts`. Insert goes straight to `books` as the `authenticated` role — no
+`SECURITY DEFINER` function needed, unlike `create_preorder`, since a new ISBN has no
+concurrent-row race (the primary key already makes a duplicate insert fail atomically).
+New titles also stream live to any other open staff dashboard: the books Realtime
+subscription was widened from `UPDATE`-only to `*` in `lib/realtime` usage.
+
+**Still needed:** `supabase/migrations/0007_authenticated_books_insert.sql` (grants
+`authenticated` INSERT on `books`) is written but **not yet applied** to the live project —
+this session had no Supabase CLI login/project link (`supabase/` has no `config.toml`, no
+`SUPABASE_ACCESS_TOKEN`), same access gap noted in the staff-auth TODO above. Apply it via
+the Supabase dashboard SQL editor (project `jjzqyfugwpvnflymawog`) or `supabase login &&
+supabase link && supabase db push` before the form will actually insert successfully.
+Build/lint/typecheck/vitest all pass locally; the form itself is unverified in-browser
+pending that migration.
 
 ---
 
@@ -130,4 +147,10 @@ dropped data on flaky 503s), so it's safe to call synchronously from a Server Ac
 
 **Depends on:** The add-book flow above.
 
-**Status:** Not started.
+**Status (2026-08-26 build):** Done, built alongside the add-book flow above.
+`addBookAction` calls `fetchBookMetadata(isbn)` synchronously right after the insert
+succeeds, then updates `cover_url`/`description` on that row. A metadata-fetch failure
+(after `fetchBookMetadata`'s own retries are exhausted) is caught and swallowed — it does
+not roll back or block the book insert; the row is left with `cover_url`/`description`
+still null, the same already-valid, already-rendered state a never-backfilled book is in
+(see `0005_add_book_metadata.sql`). No manual script re-run needed for books added this way.

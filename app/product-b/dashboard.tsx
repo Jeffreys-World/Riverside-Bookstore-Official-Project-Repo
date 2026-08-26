@@ -8,7 +8,7 @@ import {
   type FlaggedInventoryRecord,
 } from "@/lib/inventory";
 import { useRealtimeSubscription } from "@/lib/realtime";
-import { signOutAction } from "./actions";
+import { signOutAction, addBookAction } from "./actions";
 
 interface OrderRow {
   order_id: string;
@@ -41,9 +41,11 @@ const ARRIVAL_HIGHLIGHT_MS = 2500;
 export function Dashboard({
   initialOrders,
   initialBooksByIsbn,
+  addBookError,
 }: {
   initialOrders: OrderRow[];
   initialBooksByIsbn: Record<string, BookRow>;
+  addBookError?: string;
 }) {
   const [supabase] = useState(() => getBrowserClient());
   const [orders, setOrders] = useState<OrderRow[]>(initialOrders);
@@ -73,7 +75,9 @@ export function Dashboard({
   const booksStatus = useRealtimeSubscription(
     supabase,
     "product-b-books",
-    { event: "UPDATE", schema: "public", table: "books" },
+    // "*" (not just UPDATE) so a book another staff session just added
+    // via addBookAction appears here live too, not only stock changes.
+    { event: "*", schema: "public", table: "books" },
     (payload) => {
       const row = payload.new as unknown as BookRow;
       setBooksByIsbn((prev) => ({ ...prev, [row.isbn]: row }));
@@ -162,6 +166,81 @@ export function Dashboard({
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="mt-12">
+        <h2 className="font-serif text-xl text-ink">Add a book</h2>
+        <p className="mt-1 text-sm text-ink/60">
+          Cover and description are looked up from Google Books automatically once added.
+        </p>
+        <form action={addBookAction} className="mt-4 space-y-4 rounded-lg border border-ink/10 bg-white p-4">
+          <div>
+            <label htmlFor="isbn" className="block text-sm font-medium text-ink">
+              ISBN
+            </label>
+            <input
+              id="isbn"
+              name="isbn"
+              type="text"
+              required
+              placeholder="978-..."
+              className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 font-mono text-ink"
+            />
+          </div>
+          <div>
+            <label htmlFor="book_title" className="block text-sm font-medium text-ink">
+              Title
+            </label>
+            <input
+              id="book_title"
+              name="book_title"
+              type="text"
+              required
+              className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+            />
+          </div>
+          <div>
+            <label htmlFor="author_name" className="block text-sm font-medium text-ink">
+              Author
+            </label>
+            <input
+              id="author_name"
+              name="author_name"
+              type="text"
+              required
+              className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+            />
+          </div>
+          <div>
+            <label htmlFor="stock_quantity" className="block text-sm font-medium text-ink">
+              Stock quantity
+            </label>
+            <input
+              id="stock_quantity"
+              name="stock_quantity"
+              type="number"
+              min={0}
+              step={1}
+              placeholder="Leave blank if not yet inventoried"
+              className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+            />
+          </div>
+          <button
+            type="submit"
+            className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-white"
+          >
+            Add book
+          </button>
+
+          {addBookError && (
+            <p
+              role="alert"
+              className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800"
+            >
+              {addBookError}
+            </p>
+          )}
+        </form>
       </section>
     </main>
   );

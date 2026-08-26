@@ -112,6 +112,19 @@ export const createPreorderRequestSchema = z.object({
 });
 export type CreatePreorderRequest = z.infer<typeof createPreorderRequestSchema>;
 
+// addBookRequestSchema — Product B's staff "add book" flow
+// (app/product-b/actions.ts's addBookAction). stock_quantity is optional
+// on purpose: leaving it blank stores null ("not yet inventoried"), the
+// same valid state books can already be in — never coerce a blank field
+// to 0 here.
+export const addBookRequestSchema = z.object({
+  isbn: z.string().regex(ISBN13_REGEX),
+  book_title: z.string().trim().min(1),
+  author_name: z.string().trim().min(1),
+  stock_quantity: stockQuantitySchema,
+});
+export type AddBookRequest = z.infer<typeof addBookRequestSchema>;
+
 // ---------------------------------------------------------------------------
 // Display formatting helpers (UI layer only — never used for storage)
 // ---------------------------------------------------------------------------

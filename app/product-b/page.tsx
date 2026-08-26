@@ -7,7 +7,11 @@ import { Dashboard } from "./dashboard";
 // why this needs to be explicit rather than auto-detected.
 export const dynamic = "force-dynamic";
 
-export default async function ProductBPage() {
+export default async function ProductBPage({
+  searchParams,
+}: {
+  searchParams: { addBookError?: string };
+}) {
   const supabase = getServerClient();
   const {
     data: { session },
@@ -32,6 +36,7 @@ export default async function ProductBPage() {
     <Dashboard
       initialOrders={orders ?? []}
       initialBooksByIsbn={Object.fromEntries((books ?? []).map((b) => [b.isbn, b]))}
+      addBookError={searchParams.addBookError}
     />
   );
 }
