@@ -89,7 +89,12 @@ account password from this session).
 
 **Depends on:** Staff user already created — done this session.
 
-**Status:** Not started.
+**Status: Done (2026-08-25).** Logged in successfully; dashboard rendered pending pre-orders and
+stock levels. Along the way found and fixed a real bug: `authenticated` had no GRANT/policy on
+`books` (0002 only covered `anon`), so titles fell back to raw ISBNs and "Stock levels" showed
+empty — fixed in `0006_authenticated_books_select.sql`. After the fix, titles resolved correctly
+and Realtime-driven stock decrements (from the pre-orders placed earlier this session) showed up
+live without a refresh.
 
 ---
 
