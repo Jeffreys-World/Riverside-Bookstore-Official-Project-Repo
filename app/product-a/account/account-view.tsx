@@ -21,6 +21,15 @@ import {
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
 
+const ACCOUNT_TABS = [
+  { key: "points", label: "Reward Points" },
+  { key: "tiers", label: "Reward Tiers" },
+  { key: "blind-date", label: "Blind Date with a Book" },
+  { key: "donate", label: "Donate Your Points" },
+  { key: "orders", label: "Order History" },
+] as const;
+type AccountTabKey = (typeof ACCOUNT_TABS)[number]["key"];
+
 // Loyalty points have no anon-safe Realtime path today: `customers` is
 // deliberately excluded from an open anon SELECT policy (0002's reasoning
 // — a table-level grant can't tell "I already know this customer_id" from
@@ -45,6 +54,7 @@ export function AccountView() {
   const [donation, setDonation] = useState<
     { kind: "pending" } | { kind: "done"; pointsDonated: number } | { kind: "error"; message: string } | null
   >(null);
+  const [activeTab, setActiveTab] = useState<AccountTabKey>("points");
 
   const loadAccount = useCallback(async (id: string, opts: { silent?: boolean } = {}) => {
     if (!CUSTOMER_ID_REGEX.test(id)) {
@@ -148,147 +158,180 @@ export function AccountView() {
             </p>
           )}
 
-          {result?.kind === "success" && (
-            <section className="rounded-lg border border-ink/10 bg-surface p-4">
-              <h2 className="font-serif text-lg text-ink">Loyalty points</h2>
+        </div>
+      </div>
+
+      {result?.kind === "success" && (
+        <div className="mt-8">
+          <div
+            role="tablist"
+            aria-label="Account sections"
+            className="flex gap-1 overflow-x-auto border-b border-ink/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {ACCOUNT_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition-transform transition-colors duration-150 hover:scale-110 ${
+                  activeTab === tab.key
+                    ? "border-accent text-ink"
+                    : "border-transparent text-ink/60 hover:text-ink"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {activeTab === "points" && (
+            <section role="tabpanel" className="mt-6 max-w-md rounded-lg border border-ink/10 bg-surface p-4">
+              <h2 className="font-serif text-lg text-ink">Reward points</h2>
               <p className="mt-1 font-mono text-3xl text-gold">{result.rewardPoints}</p>
               <p className="text-sm text-ink/60">
                 {result.rewardPoints === 1 ? "point" : "points"} · $1 spent = 1 point
               </p>
             </section>
           )}
-        </div>
 
-        {result?.kind === "success" && (
-          <section className="mt-6 rounded-lg border border-ink/10 bg-surface p-4">
-            <h2 className="font-serif text-lg text-ink">Reward tiers</h2>
-            <p className="mt-1 text-xs text-ink/50">Redeem in-store at the register.</p>
-            <ul className="mt-3 space-y-2">
-              {REWARD_TIERS.map((tier) => {
-                const unlocked = result.rewardPoints >= tier.points;
-                return (
-                  <li
-                    key={tier.points}
-                    className={`rounded-md border p-3 ${
-                      unlocked ? "border-accent/30 bg-accent-soft" : "border-ink/10 bg-field"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-ink">{tier.label}</p>
-                      <span className="font-mono text-xs text-ink/50">{tier.points} pts</span>
-                    </div>
-                    <p className="mt-1 text-xs text-ink/60">{tier.description}</p>
-                    {!unlocked && (
-                      <p className="mt-1 text-xs text-ink/40">
-                        {tier.points - result.rewardPoints} points to go
-                      </p>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        )}
-
-        {result?.kind === "success" && (
-          <section className="mt-6 rounded-lg border border-ink/10 bg-surface p-4">
-            <h2 className="font-serif text-lg text-ink">Blind Date with a Book</h2>
-            <p className="mt-1 text-xs text-ink/60">
-              Spend {BLIND_DATE_POINTS_COST} points on a mystery staff pick instead of browsing —
-              reserved for pickup like any other order.
-            </p>
-            <button
-              type="button"
-              onClick={handleBlindDate}
-              disabled={blindDate?.kind === "pending" || result.rewardPoints < BLIND_DATE_POINTS_COST}
-              className="mt-3 min-h-[44px] w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {blindDate?.kind === "pending" ? "Revealing…" : `Redeem for ${BLIND_DATE_POINTS_COST} points`}
-            </button>
-            {blindDate?.kind === "revealed" && (
-              <p role="status" className="mt-2 rounded-md border border-accent/30 bg-accent-soft p-2 text-sm text-ink">
-                Your mystery pick: <strong>{blindDate.bookTitle}</strong>. Reserved for pickup.
-              </p>
-            )}
-            {blindDate?.kind === "error" && (
-              <p role="alert" className="mt-2 text-sm text-claret">
-                {blindDate.message}
-              </p>
-            )}
-          </section>
-        )}
-
-        {result?.kind === "success" && result.rewardPoints > 0 && (
-          <section className="mt-6 rounded-lg border border-ink/10 bg-surface p-4">
-            <h2 className="font-serif text-lg text-ink">Donate your points</h2>
-            <p className="mt-1 text-xs text-ink/60">
-              Convert your entire balance into a donation toward a local literacy program.
-            </p>
-            <button
-              type="button"
-              onClick={handleDonate}
-              disabled={donation?.kind === "pending" || donation?.kind === "done"}
-              className="mt-3 min-h-[44px] w-full rounded-md border border-ink/20 px-4 py-2 text-sm font-medium text-ink disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {donation?.kind === "pending" ? "Donating…" : `Donate ${result.rewardPoints} points`}
-            </button>
-            {donation?.kind === "done" && (
-              <p role="status" className="mt-2 rounded-md border border-accent/30 bg-accent-soft p-2 text-sm text-ink">
-                Thank you — {donation.pointsDonated} points donated.
-              </p>
-            )}
-            {donation?.kind === "error" && (
-              <p role="alert" className="mt-2 text-sm text-claret">
-                {donation.message}
-              </p>
-            )}
-          </section>
-        )}
-      </div>
-
-      {result?.kind === "success" && (
-        <section className="mt-6">
-          <h2 className="font-serif text-lg text-ink">Order history</h2>
-          {result.orders.length === 0 ? (
-            <p className="mt-2 rounded-lg border border-ink/10 bg-surface p-4 text-ink/70">
-              No orders yet — add a title to your cart to start earning rewards.
-            </p>
-          ) : (
-            <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-              {result.orders.map((o) => {
-                const status = o.order_status as OrderStatus;
-                return (
-                  <article
-                    key={o.order_id}
-                    className="flex flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface"
-                  >
-                    <CardImage src={o.cover_url} alt="" aspect="portrait" />
-                    <div className="flex flex-1 flex-col gap-1 p-4">
-                      <p className="text-ink">
-                        {o.book_title} &times; {o.quantity}
-                      </p>
-                      <span className="font-mono text-xs text-ink/40">{o.order_id}</span>
-                      <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
-                        <StampBadge tone={ORDER_STATUS_TONE[status] ?? "neutral"}>
-                          {ORDER_STATUS_LABEL[status] ?? o.order_status}
-                        </StampBadge>
-                        <span className="text-xs text-ink/50">
-                          {dateFormatter.format(new Date(o.created_at))}
-                        </span>
+          {activeTab === "tiers" && (
+            <section role="tabpanel" className="mt-6 max-w-md rounded-lg border border-ink/10 bg-surface p-4">
+              <h2 className="font-serif text-lg text-ink">Reward tiers</h2>
+              <p className="mt-1 text-xs text-ink/50">Redeem in-store at the register.</p>
+              <ul className="mt-3 space-y-2">
+                {REWARD_TIERS.map((tier) => {
+                  const unlocked = result.rewardPoints >= tier.points;
+                  return (
+                    <li
+                      key={tier.points}
+                      className={`rounded-md border p-3 ${
+                        unlocked ? "border-accent/30 bg-accent-soft" : "border-ink/10 bg-field"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-ink">{tier.label}</p>
+                        <span className="font-mono text-xs text-ink/50">{tier.points} pts</span>
                       </div>
-                      {o.pickup_date && (
-                        <p className="text-xs text-ink/60">
-                          Pickup {o.pickup_date}
-                          {o.pickup_window ? ` · ${o.pickup_window}` : ""}
+                      <p className="mt-1 text-xs text-ink/60">{tier.description}</p>
+                      {!unlocked && (
+                        <p className="mt-1 text-xs text-ink/40">
+                          {tier.points - result.rewardPoints} points to go
                         </p>
                       )}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
           )}
-        </section>
+
+          {activeTab === "blind-date" && (
+            <section role="tabpanel" className="mt-6 max-w-md rounded-lg border border-ink/10 bg-surface p-4">
+              <h2 className="font-serif text-lg text-ink">Blind Date with a Book</h2>
+              <p className="mt-1 text-xs text-ink/60">
+                Spend {BLIND_DATE_POINTS_COST} points on a mystery staff pick instead of browsing —
+                reserved for pickup like any other order.
+              </p>
+              <button
+                type="button"
+                onClick={handleBlindDate}
+                disabled={blindDate?.kind === "pending" || result.rewardPoints < BLIND_DATE_POINTS_COST}
+                className="mt-3 min-h-[44px] w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {blindDate?.kind === "pending" ? "Revealing…" : `Redeem for ${BLIND_DATE_POINTS_COST} points`}
+              </button>
+              {blindDate?.kind === "revealed" && (
+                <p role="status" className="mt-2 rounded-md border border-accent/30 bg-accent-soft p-2 text-sm text-ink">
+                  Your mystery pick: <strong>{blindDate.bookTitle}</strong>. Reserved for pickup.
+                </p>
+              )}
+              {blindDate?.kind === "error" && (
+                <p role="alert" className="mt-2 text-sm text-claret">
+                  {blindDate.message}
+                </p>
+              )}
+            </section>
+          )}
+
+          {activeTab === "donate" && (
+            <section role="tabpanel" className="mt-6 max-w-md rounded-lg border border-ink/10 bg-surface p-4">
+              <h2 className="font-serif text-lg text-ink">Donate your points</h2>
+              <p className="mt-1 text-xs text-ink/60">
+                Convert your entire balance into a donation toward a local literacy program.
+              </p>
+              {result.rewardPoints > 0 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleDonate}
+                    disabled={donation?.kind === "pending" || donation?.kind === "done"}
+                    className="mt-3 min-h-[44px] w-full rounded-md border border-ink/20 px-4 py-2 text-sm font-medium text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {donation?.kind === "pending" ? "Donating…" : `Donate ${result.rewardPoints} points`}
+                  </button>
+                  {donation?.kind === "done" && (
+                    <p role="status" className="mt-2 rounded-md border border-accent/30 bg-accent-soft p-2 text-sm text-ink">
+                      Thank you — {donation.pointsDonated} points donated.
+                    </p>
+                  )}
+                  {donation?.kind === "error" && (
+                    <p role="alert" className="mt-2 text-sm text-claret">
+                      {donation.message}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="mt-3 text-sm text-ink/50">No points to donate right now.</p>
+              )}
+            </section>
+          )}
+
+          {activeTab === "orders" && (
+            <section role="tabpanel" className="mt-6">
+              {result.orders.length === 0 ? (
+                <p className="rounded-lg border border-ink/10 bg-surface p-4 text-ink/70">
+                  No orders yet — add a title to your cart to start earning rewards.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                  {result.orders.map((o) => {
+                    const status = o.order_status as OrderStatus;
+                    return (
+                      <article
+                        key={o.order_id}
+                        className="flex flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface"
+                      >
+                        <CardImage src={o.cover_url} alt="" aspect="portrait" />
+                        <div className="flex flex-1 flex-col gap-1 p-4">
+                          <p className="text-ink">
+                            {o.book_title} &times; {o.quantity}
+                          </p>
+                          <span className="font-mono text-xs text-ink/40">{o.order_id}</span>
+                          <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
+                            <StampBadge tone={ORDER_STATUS_TONE[status] ?? "neutral"}>
+                              {ORDER_STATUS_LABEL[status] ?? o.order_status}
+                            </StampBadge>
+                            <span className="text-xs text-ink/50">
+                              {dateFormatter.format(new Date(o.created_at))}
+                            </span>
+                          </div>
+                          {o.pickup_date && (
+                            <p className="text-xs text-ink/60">
+                              Pickup {o.pickup_date}
+                              {o.pickup_window ? ` · ${o.pickup_window}` : ""}
+                            </p>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
+        </div>
       )}
     </div>
   );
