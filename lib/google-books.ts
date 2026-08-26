@@ -58,3 +58,74 @@ export async function fetchBookMetadata(isbn: string): Promise<BookMetadata | nu
 
   throw new Error(`Google Books request failed after ${MAX_ATTEMPTS} attempts (last status ${lastStatus})`);
 }
+
+export interface BookSearchCandidate {
+  isbn: string;
+  title: string;
+  author: string;
+  coverUrl: string | null;
+  description: string | null;
+}
+
+/**
+ * Free-text search (title/author), for Product B's "search instead of
+ * typing an exact ISBN" add-book flow. Unlike fetchBookMetadata this
+ * returns several candidates, not a single match — the caller lets staff
+ * pick the right edition. Results with no ISBN-13 are dropped: our schema
+ * requires one (types/schema.ts's ISBN13_REGEX / addBookRequestSchema),
+ * so a result staff couldn't actually add would just be a dead end.
+ *
+ * Retried the same as fetchBookMetadata: live testing against the real
+ * API hit transient 503s on 2 of 3 back-to-back calls, so "just click
+ * Search again" would be a bad first impression of this feature, not a
+ * rare edge case.
+ */
+export async function searchBookCandidates(query: string): Promise<BookSearchCandidate[]> {
+  const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
+  const params = new URLSearchParams({ q: query, maxResults: "10" });
+  if (apiKey) params.set("key", apiKey);
+
+  let res: Response | null = null;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    res = await fetch(`https://www.googleapis.com/books/v1/volumes?${params}`);
+    if (res.ok) break;
+    if (attempt < MAX_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+    }
+  }
+  if (!res || !res.ok) {
+    throw new Error(`Google Books search failed after ${MAX_ATTEMPTS} attempts (last status ${res?.status})`);
+  }
+
+  const data = await res.json();
+  const items: unknown[] = data?.items ?? [];
+
+  const candidates: BookSearchCandidate[] = [];
+  for (const item of items) {
+    const volumeInfo = (item as { volumeInfo?: Record<string, unknown> }).volumeInfo;
+    if (!volumeInfo) continue;
+
+    const identifiers =
+      (volumeInfo.industryIdentifiers as Array<{ type: string; identifier: string }> | undefined) ?? [];
+    const isbn13 = identifiers.find((id) => id.type === "ISBN_13")?.identifier;
+    if (!isbn13) continue; // no ISBN-13 — can't be added under this schema
+
+    const imageLinks = volumeInfo.imageLinks as
+      | { thumbnail?: string; smallThumbnail?: string }
+      | undefined;
+    const rawThumbnail = imageLinks?.thumbnail ?? imageLinks?.smallThumbnail;
+
+    candidates.push({
+      isbn: isbn13,
+      title: (volumeInfo.title as string) ?? "Untitled",
+      author: ((volumeInfo.authors as string[] | undefined) ?? []).join(", ") || "Unknown author",
+      coverUrl: rawThumbnail ? rawThumbnail.replace(/^http:/, "https:") : null,
+      description: (volumeInfo.description as string) ?? null,
+    });
+  }
+
+  // De-dupe by ISBN — the same edition can appear more than once across
+  // Google Books' regional/format variants.
+  const seen = new Set<string>();
+  return candidates.filter((c) => (seen.has(c.isbn) ? false : (seen.add(c.isbn), true)));
+}

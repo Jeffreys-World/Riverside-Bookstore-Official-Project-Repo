@@ -8,9 +8,10 @@ import {
   type FlaggedInventoryRecord,
 } from "@/lib/inventory";
 import { useRealtimeSubscription } from "@/lib/realtime";
-import { addBookAction } from "./actions";
+import { addBookAction, searchBooksAction } from "./actions";
 import { StaffNav } from "./staff-nav";
 import { StampBadge, type StampTone } from "@/components/stamp-badge";
+import type { BookSearchCandidate } from "@/lib/google-books";
 
 interface OrderRow {
   order_id: string;
@@ -88,6 +89,45 @@ export function Dashboard({
   // arrival, even though this one came from a full page navigation, not
   // a Realtime event.
   const [announcement, setAnnouncement] = useState(bookAdded ? `Added ${bookAdded}` : "");
+
+  // Add-book form fields are lifted into state so a Google Books search
+  // result can prefill them — the form still submits natively via
+  // action={addBookAction}, this just controls what's in the inputs at
+  // submit time.
+  const [newIsbn, setNewIsbn] = useState("");
+  const [newTitle, setNewTitle] = useState("");
+  const [newAuthor, setNewAuthor] = useState("");
+  const [newCoverUrl, setNewCoverUrl] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<BookSearchCandidate[] | null>(null);
+  const [searchError, setSearchError] = useState("");
+
+  async function handleSearch() {
+    if (searching) return;
+    setSearching(true);
+    setSearchError("");
+    setSearchResults(null);
+    try {
+      const res = await searchBooksAction(searchQuery);
+      if (res.ok) {
+        setSearchResults(res.results);
+        if (res.results.length === 0) setSearchError("No results with a usable ISBN-13.");
+      } else {
+        setSearchError(res.message);
+      }
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function pickCandidate(c: BookSearchCandidate) {
+    setNewIsbn(c.isbn);
+    setNewTitle(c.title);
+    setNewAuthor(c.author);
+    setNewCoverUrl(c.coverUrl);
+    setSearchResults(null);
+  }
 
   // The addBookAction redirect only changes the query string on the same
   // route (/product-b -> /product-b?bookAdded=...), which the App Router
@@ -314,9 +354,81 @@ export function Dashboard({
       <section className="mt-12">
         <h2 className="font-serif text-xl text-ink">Add a book</h2>
         <p className="mt-1 text-sm text-ink/60">
-          Cover and description are looked up from Google Books automatically once added.
+          Search Google Books to fill in the details below, or type an ISBN by hand — either way,
+          cover and description are looked up automatically once added.
         </p>
+
+        <div className="mt-4 rounded-lg border border-ink/10 bg-surface p-4">
+          <label htmlFor="google_books_search" className="block text-sm font-medium text-ink">
+            Search Google Books
+          </label>
+          <div className="mt-1 flex gap-2">
+            <input
+              id="google_books_search"
+              type="text"
+              placeholder="Title or author"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSearch();
+                }
+              }}
+              className="min-h-[44px] flex-1 rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+            />
+            <button
+              type="button"
+              onClick={handleSearch}
+              disabled={searching}
+              className="min-h-[44px] flex-none rounded-md border border-ink/20 px-4 text-sm font-medium text-ink disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {searching ? "Searching…" : "Search"}
+            </button>
+          </div>
+
+          {searchError && <p className="mt-2 text-sm text-claret">{searchError}</p>}
+
+          {searchResults && searchResults.length > 0 && (
+            <ul className="mt-3 max-h-72 space-y-2 overflow-y-auto">
+              {searchResults.map((c) => (
+                <li key={c.isbn}>
+                  <button
+                    type="button"
+                    onClick={() => pickCandidate(c)}
+                    className="flex w-full items-center gap-3 rounded-md border border-ink/10 bg-white p-2 text-left hover:border-accent"
+                  >
+                    {c.coverUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.coverUrl} alt="" className="h-14 w-10 flex-none rounded object-cover" />
+                    ) : (
+                      <div
+                        aria-hidden
+                        className="flex h-14 w-10 flex-none items-center justify-center rounded bg-ink/5 text-[9px] text-ink/40"
+                      >
+                        No cover
+                      </div>
+                    )}
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm text-ink">{c.title}</span>
+                      <span className="block truncate text-xs text-ink/60">{c.author}</span>
+                      <span className="block font-mono text-xs text-ink/40">{c.isbn}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <form action={addBookAction} className="mt-4 space-y-4 rounded-lg border border-ink/10 bg-surface p-4">
+          {newCoverUrl && (
+            <div className="flex items-center gap-3 rounded-md border border-accent/30 bg-accent-soft p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={newCoverUrl} alt="" className="h-16 w-11 flex-none rounded object-cover" />
+              <p className="text-sm text-ink">Selected from Google Books — cover will be saved on add.</p>
+            </div>
+          )}
           <div>
             <label htmlFor="isbn" className="block text-sm font-medium text-ink">
               ISBN
@@ -327,6 +439,8 @@ export function Dashboard({
               type="text"
               required
               placeholder="978-..."
+              value={newIsbn}
+              onChange={(e) => setNewIsbn(e.target.value)}
               className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 font-mono text-ink"
             />
           </div>
@@ -339,6 +453,8 @@ export function Dashboard({
               name="book_title"
               type="text"
               required
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
               className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
             />
           </div>
@@ -351,6 +467,8 @@ export function Dashboard({
               name="author_name"
               type="text"
               required
+              value={newAuthor}
+              onChange={(e) => setNewAuthor(e.target.value)}
               className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
             />
           </div>

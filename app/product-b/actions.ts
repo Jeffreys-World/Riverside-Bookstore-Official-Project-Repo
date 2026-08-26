@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase-server";
-import { fetchBookMetadata } from "@/lib/google-books";
+import { fetchBookMetadata, searchBookCandidates, type BookSearchCandidate } from "@/lib/google-books";
 import { addBookRequestSchema } from "@/types/schema";
 
 export async function signInAction(formData: FormData) {
@@ -70,4 +70,37 @@ export async function addBookAction(formData: FormData) {
   }
 
   redirect(`/product-b?bookAdded=${encodeURIComponent(book_title)}`);
+}
+
+export type SearchBooksResult =
+  | { ok: true; results: BookSearchCandidate[] }
+  | { ok: false; message: string };
+
+/**
+ * Backs the "search instead of typing an exact ISBN" add-book flow
+ * (dashboard.tsx). Not DB-touching — no RLS to fall back on the way
+ * addBookAction's insert is protected — so this checks the session
+ * itself instead of only relying on the page-level redirect, same
+ * least-privilege reasoning as every other staff-only action here.
+ */
+export async function searchBooksAction(query: string): Promise<SearchBooksResult> {
+  const supabase = getServerClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) {
+    return { ok: false, message: "Your session expired — sign in again." };
+  }
+
+  const trimmed = query.trim();
+  if (trimmed.length < 2) {
+    return { ok: false, message: "Enter at least 2 characters to search." };
+  }
+
+  try {
+    const results = await searchBookCandidates(trimmed);
+    return { ok: true, results };
+  } catch {
+    return { ok: false, message: "Google Books search failed. Please try again." };
+  }
 }
