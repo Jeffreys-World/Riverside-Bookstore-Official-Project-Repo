@@ -19,3 +19,11 @@ export const STORE_POLICIES = `
 - Returns accepted within 14 days with receipt; store credit only on opened items.
 - Author event tickets are non-refundable but transferable.
 `.trim();
+
+// Same fictional-flavor status as STORE_HOURS/STORE_POLICIES above — the
+// .example domain and 555 exchange are the standard reserved-for-fiction
+// placeholders (RFC 2606 / NANP), not a real address to route mail/calls to.
+export const STORE_CONTACT = {
+  email: "hello@riversidebooks.example",
+  phone: "(718) 555-0142",
+} as const;
