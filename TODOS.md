@@ -1,5 +1,17 @@
 # TODOS
 
+## Give "Add a Book" validation errors field-level detail
+
+**What:** `app/product-b/actions.ts:58` falls back to Zod's raw issue message on a failed `addBookRequestSchema` parse, which for several validators (`types/schema.ts:269`, e.g. the ISBN regex) is just the bare string "Invalid" — no indication of which field or why.
+
+**Why:** Found during `/qa` on 2026-08-26 (afternoon pass, ISSUE-008) testing the Add a Book form with a malformed ISBN. Low severity — the validation itself is correct, only the message is unhelpful to staff.
+
+**Fix:** Give each field in `addBookRequestSchema` an explicit `.message()`, or surface `parsed.error.issues[0]?.path` alongside the message so staff know which field to fix.
+
+**Status:** Deferred (Standard-tier QA fixes medium+ only).
+
+---
+
 ## Build a real staff Supabase Auth role/claim system
 
 **What:** Replace the seeded-user gate (used for the Product A+B live-sync phase) with a proper `staff` role/claim, RLS policies keyed to it, and a real sign-in flow.
