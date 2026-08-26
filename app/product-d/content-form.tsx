@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { formatEventTimestamp } from "@/types/schema";
 import { generateMarketingContentAction, type MarketingContentResult } from "./actions";
+import { GeneratedImage } from "./generated-image";
 
 interface BookRow {
   isbn: string;
@@ -169,6 +170,16 @@ export function ContentForm({ books, events }: { books: BookRow[]; events: Event
               <h3 className="font-serif text-lg text-ink">Staff pick card</h3>
               <p className="mt-1 font-mono text-ink/80">{result.content.staffPickCard}</p>
             </div>
+            <GeneratedImage
+              headline={result.content.staffPickCard || selectedBook?.book_title || selectedEvent?.event_title || "Riverside Books"}
+              subtitle={
+                selectedBook
+                  ? `${selectedBook.book_title} — ${selectedBook.author_name}`
+                  : selectedEvent
+                    ? `${selectedEvent.event_title} — ${formatEventTimestamp(selectedEvent.author_event_at)}`
+                    : ""
+              }
+            />
           </>
         )}
       </div>
