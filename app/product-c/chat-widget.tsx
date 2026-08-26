@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { askSupportChatbotAction, type SupportChatBook } from "./actions";
+import { useRotatingMessage } from "@/lib/use-rotating-message";
 
 interface Exchange {
   question: string;
@@ -9,10 +10,13 @@ interface Exchange {
   books: SupportChatBook[];
 }
 
+const CHECKING_MESSAGES = ["Checking…", "Looking that up…", "Almost there…"] as const;
+
 export function ChatWidget() {
   const [question, setQuestion] = useState("");
   const [history, setHistory] = useState<Exchange[]>([]);
   const [pending, setPending] = useState(false);
+  const progressMessage = useRotatingMessage(CHECKING_MESSAGES, pending);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -65,7 +69,7 @@ export function ChatWidget() {
             )}
           </div>
         ))}
-        {pending && <p className="text-sm text-ink/50">Checking…</p>}
+        {pending && <p className="text-sm text-ink/50">{progressMessage}</p>}
       </div>
 
       <form onSubmit={handleSubmit} className="mt-6 flex gap-2">

@@ -4,6 +4,9 @@ import { useState, type FormEvent } from "react";
 import { formatEventTimestamp } from "@/types/schema";
 import { generateMarketingContentAction, type MarketingContentResult } from "./actions";
 import { GeneratedImage } from "./generated-image";
+import { useRotatingMessage } from "@/lib/use-rotating-message";
+
+const GENERATING_MESSAGES = ["Generating…", "Drafting your caption…", "Almost ready…"] as const;
 
 interface BookRow {
   isbn: string;
@@ -29,6 +32,7 @@ export function ContentForm({ books, events }: { books: BookRow[]; events: Event
     | { kind: "error"; message: string }
     | null
   >(null);
+  const progressMessage = useRotatingMessage(GENERATING_MESSAGES, pending);
 
   const selectedBook = books.find((b) => b.isbn === isbn);
   const selectedEvent = events.find((e) => e.id === eventId);
@@ -149,7 +153,7 @@ export function ContentForm({ books, events }: { books: BookRow[]; events: Event
         disabled={pending || (!note.trim() && !selectedBook && !selectedEvent)}
         className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {pending ? "Generating…" : "Generate content"}
+        {pending ? progressMessage : "Generate content"}
       </button>
 
       <div role="status" aria-live="polite">
