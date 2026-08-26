@@ -21,7 +21,7 @@ export default async function ProductCPage() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
+    <main className="mx-auto max-w-7xl px-6 py-16">
       <h1 className="font-serif text-3xl text-ink">Support Center</h1>
       <p className="mt-2 text-ink/70">
         The most common questions are answered right here — ask the chatbot for anything else, like

@@ -197,17 +197,17 @@ export function AccountView() {
           )}
 
           {activeTab === "tiers" && (
-            <section role="tabpanel" className="mt-6 max-w-md rounded-lg border border-ink/10 bg-surface p-4">
+            <section role="tabpanel" className="mt-6">
               <h2 className="font-serif text-lg text-ink">Reward tiers</h2>
               <p className="mt-1 text-xs text-ink/50">Redeem in-store at the register.</p>
-              <ul className="mt-3 space-y-2">
+              <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {REWARD_TIERS.map((tier) => {
                   const unlocked = result.rewardPoints >= tier.points;
                   return (
-                    <li
+                    <div
                       key={tier.points}
-                      className={`rounded-md border p-3 ${
-                        unlocked ? "border-accent/30 bg-accent-soft" : "border-ink/10 bg-field"
+                      className={`rounded-lg border p-4 ${
+                        unlocked ? "border-accent/30 bg-accent-soft" : "border-ink/10 bg-surface"
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -220,10 +220,10 @@ export function AccountView() {
                           {tier.points - result.rewardPoints} points to go
                         </p>
                       )}
-                    </li>
+                    </div>
                   );
                 })}
-              </ul>
+              </div>
             </section>
           )}
 

@@ -66,9 +66,12 @@ export function SupportTabs({ events, eventsError }: { events: EventRow[]; event
 
           <div className="mt-8">
             <h2 className="font-serif text-lg text-ink">Common questions</h2>
-            <div className="mt-2 divide-y divide-ink/10 rounded-lg border border-ink/10 bg-surface">
+            <div className="mt-2 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {STORE_FAQS.map((faq) => (
-                <details key={faq.question} className="group p-4 open:pb-4">
+                <details
+                  key={faq.question}
+                  className="group rounded-lg border border-ink/10 bg-surface p-4"
+                >
                   <summary className="cursor-pointer list-none font-medium text-ink marker:content-none">
                     <span className="flex items-center justify-between gap-3">
                       {faq.question}

@@ -448,7 +448,7 @@ export function Dashboard({
       )}
 
       {activeTab === "add-book" && (
-        <section role="tabpanel" className="mt-8 max-w-xl">
+        <section role="tabpanel" className="mt-8">
           <p className="text-sm text-ink/60">
             Search Google Books to fill in the details below, or type everything by hand — cover
             and description are looked up automatically once added, unless you fill them in
@@ -532,119 +532,121 @@ export function Dashboard({
                 <p className="text-sm text-ink">This cover will be saved on add.</p>
               </div>
             )}
-            <div>
-              <label htmlFor="isbn" className="block text-sm font-medium text-ink">
-                ISBN
-              </label>
-              <input
-                id="isbn"
-                name="isbn"
-                type="text"
-                required
-                placeholder="978-..."
-                value={newIsbn}
-                onChange={(e) => setNewIsbn(e.target.value)}
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 font-mono text-ink"
-              />
-            </div>
-            <div>
-              <label htmlFor="book_title" className="block text-sm font-medium text-ink">
-                Title
-              </label>
-              <input
-                id="book_title"
-                name="book_title"
-                type="text"
-                required
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-              />
-            </div>
-            <div>
-              <label htmlFor="author_name" className="block text-sm font-medium text-ink">
-                Author
-              </label>
-              <input
-                id="author_name"
-                name="author_name"
-                type="text"
-                required
-                value={newAuthor}
-                onChange={(e) => setNewAuthor(e.target.value)}
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-              />
-            </div>
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-ink">
-                Description <span className="font-normal text-ink/50">(optional)</span>
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                rows={4}
-                placeholder="Leave blank to auto-fetch from Google Books by ISBN"
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-              />
-            </div>
-            <div>
-              <label htmlFor="cover_url" className="block text-sm font-medium text-ink">
-                Cover asset URL <span className="font-normal text-ink/50">(optional)</span>
-              </label>
-              <input
-                id="cover_url"
-                name="cover_url"
-                type="url"
-                placeholder="Leave blank to auto-fetch from Google Books by ISBN"
-                value={newCoverUrl}
-                onChange={(e) => setNewCoverUrl(e.target.value)}
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-              />
-            </div>
-            <div>
-              <label htmlFor="author_bio" className="block text-sm font-medium text-ink">
-                Author bio <span className="font-normal text-ink/50">(optional)</span>
-              </label>
-              <textarea
-                id="author_bio"
-                name="author_bio"
-                rows={3}
-                placeholder="No auto-fetch source for this one — type it in, or leave blank"
-                value={newAuthorBio}
-                onChange={(e) => setNewAuthorBio(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-              />
-            </div>
-            <div>
-              <label htmlFor="stock_quantity" className="block text-sm font-medium text-ink">
-                Stock quantity
-              </label>
-              <input
-                id="stock_quantity"
-                name="stock_quantity"
-                type="number"
-                min={0}
-                step={1}
-                placeholder="Leave blank if not yet inventoried"
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-              />
-            </div>
-            <div>
-              <label htmlFor="price" className="block text-sm font-medium text-ink">
-                Price
-              </label>
-              <input
-                id="price"
-                name="price"
-                type="number"
-                min={0}
-                step={0.01}
-                required
-                placeholder="0.00"
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-              />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <label htmlFor="isbn" className="block text-sm font-medium text-ink">
+                  ISBN
+                </label>
+                <input
+                  id="isbn"
+                  name="isbn"
+                  type="text"
+                  required
+                  placeholder="978-..."
+                  value={newIsbn}
+                  onChange={(e) => setNewIsbn(e.target.value)}
+                  className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 font-mono text-ink"
+                />
+              </div>
+              <div>
+                <label htmlFor="book_title" className="block text-sm font-medium text-ink">
+                  Title
+                </label>
+                <input
+                  id="book_title"
+                  name="book_title"
+                  type="text"
+                  required
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+                />
+              </div>
+              <div>
+                <label htmlFor="author_name" className="block text-sm font-medium text-ink">
+                  Author
+                </label>
+                <input
+                  id="author_name"
+                  name="author_name"
+                  type="text"
+                  required
+                  value={newAuthor}
+                  onChange={(e) => setNewAuthor(e.target.value)}
+                  className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+                />
+              </div>
+              <div>
+                <label htmlFor="stock_quantity" className="block text-sm font-medium text-ink">
+                  Stock quantity
+                </label>
+                <input
+                  id="stock_quantity"
+                  name="stock_quantity"
+                  type="number"
+                  min={0}
+                  step={1}
+                  placeholder="Leave blank if not yet inventoried"
+                  className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+                />
+              </div>
+              <div>
+                <label htmlFor="price" className="block text-sm font-medium text-ink">
+                  Price
+                </label>
+                <input
+                  id="price"
+                  name="price"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  required
+                  placeholder="0.00"
+                  className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+                />
+              </div>
+              <div>
+                <label htmlFor="cover_url" className="block text-sm font-medium text-ink">
+                  Cover asset URL <span className="font-normal text-ink/50">(optional)</span>
+                </label>
+                <input
+                  id="cover_url"
+                  name="cover_url"
+                  type="url"
+                  placeholder="Leave blank to auto-fetch from Google Books by ISBN"
+                  value={newCoverUrl}
+                  onChange={(e) => setNewCoverUrl(e.target.value)}
+                  className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+                />
+              </div>
+              <div className="sm:col-span-2 lg:col-span-3">
+                <label htmlFor="description" className="block text-sm font-medium text-ink">
+                  Description <span className="font-normal text-ink/50">(optional)</span>
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  rows={4}
+                  placeholder="Leave blank to auto-fetch from Google Books by ISBN"
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  className="mt-1 block w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+                />
+              </div>
+              <div className="sm:col-span-2 lg:col-span-3">
+                <label htmlFor="author_bio" className="block text-sm font-medium text-ink">
+                  Author bio <span className="font-normal text-ink/50">(optional)</span>
+                </label>
+                <textarea
+                  id="author_bio"
+                  name="author_bio"
+                  rows={3}
+                  placeholder="No auto-fetch source for this one — type it in, or leave blank"
+                  value={newAuthorBio}
+                  onChange={(e) => setNewAuthorBio(e.target.value)}
+                  className="mt-1 block w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+                />
+              </div>
             </div>
             <button
               type="submit"
@@ -666,7 +668,7 @@ export function Dashboard({
       )}
 
       {activeTab === "add-merch" && (
-        <section role="tabpanel" className="mt-8 max-w-xl">
+        <section role="tabpanel" className="mt-8">
           <p className="text-sm text-ink/60">
             Cards and gifts — browse-only, not part of the pre-order flow.
           </p>
@@ -681,73 +683,75 @@ export function Dashboard({
             action={addMerchandiseAction}
             className="mt-4 space-y-4 rounded-lg border border-ink/10 bg-surface p-4"
           >
-            <div>
-              <label htmlFor="item_name" className="block text-sm font-medium text-ink">
-                Item name
-              </label>
-              <input
-                id="item_name"
-                name="item_name"
-                type="text"
-                required
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-              />
-            </div>
-            <div>
-              <label htmlFor="category" className="block text-sm font-medium text-ink">
-                Category
-              </label>
-              <select
-                id="category"
-                name="category"
-                required
-                defaultValue="gift"
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-              >
-                <option value="gift">Gift</option>
-                <option value="card">Card</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="merch_stock_quantity" className="block text-sm font-medium text-ink">
-                Stock quantity
-              </label>
-              <input
-                id="merch_stock_quantity"
-                name="stock_quantity"
-                type="number"
-                min={0}
-                step={1}
-                placeholder="Leave blank if not yet inventoried"
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-              />
-            </div>
-            <div>
-              <label htmlFor="merch_price" className="block text-sm font-medium text-ink">
-                Price
-              </label>
-              <input
-                id="merch_price"
-                name="price"
-                type="number"
-                min={0}
-                step={0.01}
-                required
-                placeholder="0.00"
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-              />
-            </div>
-            <div>
-              <label htmlFor="merch_image_url" className="block text-sm font-medium text-ink">
-                Image URL <span className="font-normal text-ink/50">(optional)</span>
-              </label>
-              <input
-                id="merch_image_url"
-                name="image_url"
-                type="url"
-                placeholder="No auto-fetch source for merchandise — paste a product photo URL, or leave blank"
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-              />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <label htmlFor="item_name" className="block text-sm font-medium text-ink">
+                  Item name
+                </label>
+                <input
+                  id="item_name"
+                  name="item_name"
+                  type="text"
+                  required
+                  className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+                />
+              </div>
+              <div>
+                <label htmlFor="category" className="block text-sm font-medium text-ink">
+                  Category
+                </label>
+                <select
+                  id="category"
+                  name="category"
+                  required
+                  defaultValue="gift"
+                  className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+                >
+                  <option value="gift">Gift</option>
+                  <option value="card">Card</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="merch_stock_quantity" className="block text-sm font-medium text-ink">
+                  Stock quantity
+                </label>
+                <input
+                  id="merch_stock_quantity"
+                  name="stock_quantity"
+                  type="number"
+                  min={0}
+                  step={1}
+                  placeholder="Leave blank if not yet inventoried"
+                  className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+                />
+              </div>
+              <div>
+                <label htmlFor="merch_price" className="block text-sm font-medium text-ink">
+                  Price
+                </label>
+                <input
+                  id="merch_price"
+                  name="price"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  required
+                  placeholder="0.00"
+                  className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+                />
+              </div>
+              <div className="sm:col-span-2 lg:col-span-2">
+                <label htmlFor="merch_image_url" className="block text-sm font-medium text-ink">
+                  Image URL <span className="font-normal text-ink/50">(optional)</span>
+                </label>
+                <input
+                  id="merch_image_url"
+                  name="image_url"
+                  type="url"
+                  placeholder="No auto-fetch source for merchandise — paste a product photo URL, or leave blank"
+                  className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+                />
+              </div>
             </div>
             <button
               type="submit"
