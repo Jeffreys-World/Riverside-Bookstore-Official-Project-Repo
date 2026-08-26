@@ -59,8 +59,8 @@ function TriggerButton({
 }
 
 const TRIGGER_CLASS = (active: boolean) =>
-  `inline-block whitespace-nowrap rounded-md border-b-2 px-3 py-3 text-sm font-medium transition-transform transition-colors duration-150 hover:scale-125 hover:shadow-sm ${
-    active ? "border-accent text-ink" : "border-transparent text-ink/60 hover:text-ink"
+  `inline-block whitespace-nowrap rounded-md border-b-2 border-accent px-3 py-3 text-sm font-medium transition-transform transition-colors duration-150 hover:scale-125 hover:shadow-sm ${
+    active ? "text-ink" : "text-ink/60 hover:text-ink"
   }`;
 
 export interface NavMenuItem {
