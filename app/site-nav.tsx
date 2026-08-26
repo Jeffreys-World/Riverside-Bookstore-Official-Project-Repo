@@ -15,7 +15,7 @@ const ACCOUNT_ITEMS = [
 ] as const;
 
 const SUPPORT_ITEMS = [
-  { href: "/product-c", label: "Frequently Asked Questions" },
+  { href: "/product-c", label: "FAQ & Chatbot" },
   { href: "/product-c/contact", label: "Contact Us" },
 ] as const;
 

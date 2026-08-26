@@ -46,7 +46,7 @@ export default async function ProductAPage({
   );
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-16">
+    <main className="mx-auto max-w-7xl px-6 py-16">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-serif text-3xl text-ink sm:text-4xl">
@@ -78,7 +78,7 @@ export default async function ProductAPage({
             Couldn&apos;t load the catalog right now. Please try again shortly.
           </p>
         ) : books && books.length > 0 ? (
-          <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
             {books.map((b) => (
               <BookCard
                 key={b.isbn}
@@ -106,7 +106,7 @@ export default async function ProductAPage({
           <p className="mt-1 text-sm text-ink/60">
             In-store only — browse what&apos;s currently on the shelf.
           </p>
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
             {merchandise.map((m) => (
               <GiftCard
                 key={m.id}

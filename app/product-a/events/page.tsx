@@ -17,7 +17,7 @@ export default async function EventsPage() {
     .order("author_event_at", { ascending: true });
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
+    <main className="mx-auto max-w-7xl px-6 py-16">
       <h1 className="font-serif text-3xl text-ink sm:text-4xl">Events</h1>
       <p className="mt-2 text-ink/70">Author readings and signings hosted in-store.</p>
 
@@ -26,7 +26,7 @@ export default async function EventsPage() {
           Couldn&apos;t load events right now. Please try again shortly.
         </p>
       ) : events && events.length > 0 ? (
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {events.map((e) => (
             <Link
               key={e.id}

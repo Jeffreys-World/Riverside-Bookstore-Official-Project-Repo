@@ -209,7 +209,7 @@ export function Dashboard({
   );
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
+    <main className="mx-auto max-w-7xl px-6 py-16">
       <StaffNav active="dashboard" />
       <div className="flex items-center justify-between gap-4">
         <h1 className="font-serif text-3xl text-ink">Inventory</h1>
@@ -263,7 +263,7 @@ export function Dashboard({
               No pending pre-orders right now.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {orders.map((o) => (
                 <article
                   key={o.order_id}
@@ -295,7 +295,7 @@ export function Dashboard({
               No titles in the catalog yet.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {flaggedBooks.map((f) => (
                 <article
                   key={f.id}
@@ -328,7 +328,7 @@ export function Dashboard({
               No cards or gifts in the catalog yet.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {flaggedMerchandise.map((f) => (
                 <article
                   key={f.id}
@@ -358,7 +358,7 @@ export function Dashboard({
       )}
 
       {activeTab === "add-book" && (
-        <section role="tabpanel" className="mt-8">
+        <section role="tabpanel" className="mt-8 max-w-xl">
           <p className="text-sm text-ink/60">
             Search Google Books to fill in the details below, or type everything by hand — cover
             and description are looked up automatically once added, unless you fill them in
@@ -576,7 +576,7 @@ export function Dashboard({
       )}
 
       {activeTab === "add-merch" && (
-        <section role="tabpanel" className="mt-8">
+        <section role="tabpanel" className="mt-8 max-w-xl">
           <p className="text-sm text-ink/60">
             Cards and gifts — browse-only, not part of the pre-order flow.
           </p>

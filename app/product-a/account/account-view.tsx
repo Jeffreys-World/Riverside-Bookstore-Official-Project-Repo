@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { loadCustomerId, saveCustomerId } from "@/lib/customer-id-storage";
 import { CUSTOMER_ID_REGEX, ORDER_STATUS_LABEL, ORDER_STATUS_TONE, type OrderStatus } from "@/types/schema";
 import { StampBadge } from "@/components/stamp-badge";
+import { CardImage } from "@/components/card-image";
 import { getAccountAction, type AccountOrder } from "../actions";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
@@ -76,36 +77,36 @@ export function AccountView() {
 
   return (
     <div className="mt-8">
-      <form onSubmit={handleSubmit} className="flex gap-2">
-        <label htmlFor="account_customer_id" className="sr-only">
-          Customer ID
-        </label>
-        <input
-          id="account_customer_id"
-          type="text"
-          placeholder="cust_XXXXX"
-          value={customerId}
-          onChange={(e) => setCustomerId(e.target.value)}
-          className="min-h-[44px] flex-1 rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          className="min-h-[44px] flex-none rounded-md bg-accent px-6 py-2 font-medium text-paper disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {loading ? "Loading…" : "View account"}
-        </button>
-      </form>
+      <div className="max-w-md">
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <label htmlFor="account_customer_id" className="sr-only">
+            Customer ID
+          </label>
+          <input
+            id="account_customer_id"
+            type="text"
+            placeholder="cust_XXXXX"
+            value={customerId}
+            onChange={(e) => setCustomerId(e.target.value)}
+            className="min-h-[44px] flex-1 rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="min-h-[44px] flex-none rounded-md bg-accent px-6 py-2 font-medium text-paper disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? "Loading…" : "View account"}
+          </button>
+        </form>
 
-      <div role="status" aria-live="polite" className="mt-6">
-        {result?.kind === "error" && (
-          <p className="rounded-md border border-claret/30 bg-claret-soft p-3 text-claret">
-            {result.message}
-          </p>
-        )}
+        <div role="status" aria-live="polite" className="mt-6">
+          {result?.kind === "error" && (
+            <p className="rounded-md border border-claret/30 bg-claret-soft p-3 text-claret">
+              {result.message}
+            </p>
+          )}
 
-        {result?.kind === "success" && (
-          <>
+          {result?.kind === "success" && (
             <section className="rounded-lg border border-ink/10 bg-surface p-4">
               <h2 className="font-serif text-lg text-ink">Loyalty points</h2>
               <p className="mt-1 font-mono text-3xl text-gold">{result.rewardPoints}</p>
@@ -113,68 +114,54 @@ export function AccountView() {
                 {result.rewardPoints === 1 ? "point" : "points"} toward your next reward
               </p>
             </section>
-
-            <section className="mt-6">
-              <h2 className="font-serif text-lg text-ink">Order history</h2>
-              {result.orders.length === 0 ? (
-                <p className="mt-2 rounded-lg border border-ink/10 bg-surface p-4 text-ink/70">
-                  No orders yet — add a title to your cart to start earning rewards.
-                </p>
-              ) : (
-                <ul className="mt-2 space-y-3">
-                  {result.orders.map((o) => {
-                    const status = o.order_status as OrderStatus;
-                    return (
-                      <li
-                        key={o.order_id}
-                        className="flex gap-3 rounded-lg border border-ink/10 bg-surface p-3"
-                      >
-                        {o.cover_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={o.cover_url}
-                            alt=""
-                            className="h-20 w-14 flex-none rounded object-cover"
-                          />
-                        ) : (
-                          <div
-                            aria-hidden
-                            className="flex h-20 w-14 flex-none items-center justify-center rounded bg-ink/5 text-[10px] text-ink/40"
-                          >
-                            No cover
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-ink">
-                              {o.book_title} &times; {o.quantity}
-                            </p>
-                            <span className="font-mono text-xs text-ink/40">{o.order_id}</span>
-                          </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-2">
-                            <StampBadge tone={ORDER_STATUS_TONE[status] ?? "neutral"}>
-                              {ORDER_STATUS_LABEL[status] ?? o.order_status}
-                            </StampBadge>
-                            <span className="text-xs text-ink/50">
-                              {dateFormatter.format(new Date(o.created_at))}
-                            </span>
-                          </div>
-                          {o.pickup_date && (
-                            <p className="mt-1 text-xs text-ink/60">
-                              Pickup {o.pickup_date}
-                              {o.pickup_window ? ` · ${o.pickup_window}` : ""}
-                            </p>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
-          </>
-        )}
+          )}
+        </div>
       </div>
+
+      {result?.kind === "success" && (
+        <section className="mt-6">
+          <h2 className="font-serif text-lg text-ink">Order history</h2>
+          {result.orders.length === 0 ? (
+            <p className="mt-2 rounded-lg border border-ink/10 bg-surface p-4 text-ink/70">
+              No orders yet — add a title to your cart to start earning rewards.
+            </p>
+          ) : (
+            <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+              {result.orders.map((o) => {
+                const status = o.order_status as OrderStatus;
+                return (
+                  <article
+                    key={o.order_id}
+                    className="flex flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface"
+                  >
+                    <CardImage src={o.cover_url} alt="" aspect="portrait" />
+                    <div className="flex flex-1 flex-col gap-1 p-4">
+                      <p className="text-ink">
+                        {o.book_title} &times; {o.quantity}
+                      </p>
+                      <span className="font-mono text-xs text-ink/40">{o.order_id}</span>
+                      <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
+                        <StampBadge tone={ORDER_STATUS_TONE[status] ?? "neutral"}>
+                          {ORDER_STATUS_LABEL[status] ?? o.order_status}
+                        </StampBadge>
+                        <span className="text-xs text-ink/50">
+                          {dateFormatter.format(new Date(o.created_at))}
+                        </span>
+                      </div>
+                      {o.pickup_date && (
+                        <p className="text-xs text-ink/60">
+                          Pickup {o.pickup_date}
+                          {o.pickup_window ? ` · ${o.pickup_window}` : ""}
+                        </p>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
