@@ -59,12 +59,14 @@ export function Dashboard({
   initialMerchandiseById,
   addBookError,
   bookAdded,
+  loadError,
 }: {
   initialOrders: OrderRow[];
   initialBooksByIsbn: Record<string, BookRow>;
   initialMerchandiseById: Record<string, MerchandiseRow>;
   addBookError?: string;
   bookAdded?: string;
+  loadError?: string;
 }) {
   const [supabase] = useState(() => getBrowserClient());
   const [orders, setOrders] = useState<OrderRow[]>(initialOrders);
@@ -165,6 +167,15 @@ export function Dashboard({
       <p aria-live="polite" role="status" className="sr-only">
         {announcement}
       </p>
+
+      {loadError && (
+        <p
+          role="alert"
+          className="mt-6 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800"
+        >
+          {loadError}
+        </p>
+      )}
 
       {bookAdded && (
         // Rendered at the top, not next to the form below, since a
