@@ -66,7 +66,7 @@ export function ContentForm({ books, events }: { books: BookRow[]; events: Event
           id="isbn"
           value={isbn}
           onChange={(e) => setIsbn(e.target.value)}
-          className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+          className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
         >
           <option value="">— None, just use my note —</option>
           {books.map((b) => (
@@ -110,7 +110,7 @@ export function ContentForm({ books, events }: { books: BookRow[]; events: Event
           id="event_id"
           value={eventId}
           onChange={(e) => setEventId(e.target.value)}
-          className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+          className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
         >
           <option value="">— None —</option>
           {events.map((ev) => (
@@ -137,7 +137,7 @@ export function ContentForm({ books, events }: { books: BookRow[]; events: Event
           onChange={(e) => setNote(e.target.value)}
           rows={4}
           placeholder="e.g. staff pick this week, perfect cozy autumn read"
-          className="mt-1 block w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+          className="mt-1 block w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
         />
       </div>
 

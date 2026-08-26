@@ -178,7 +178,7 @@ export default function CheckoutPage() {
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
             required
-            className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+            className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
           />
           <Link href="/product-a/signup" className="mt-1 inline-block text-sm text-accent underline-offset-2 hover:underline">
             New customer? Create an account
@@ -197,7 +197,7 @@ export default function CheckoutPage() {
               value={pickupDate}
               onChange={(e) => setPickupDate(e.target.value)}
               required
-              className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+              className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
             />
           </div>
           <div>
@@ -208,7 +208,7 @@ export default function CheckoutPage() {
               id="pickup_window"
               value={pickupWindow}
               onChange={(e) => setPickupWindow(e.target.value)}
-              className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+              className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
             >
               {PICKUP_WINDOWS.map((w) => (
                 <option key={w} value={w}>

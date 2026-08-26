@@ -263,24 +263,27 @@ export function Dashboard({
               No pending pre-orders right now.
             </p>
           ) : (
-            <ul className="space-y-2">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {orders.map((o) => (
-                <li
+                <article
                   key={o.order_id}
-                  className={`rounded-lg border p-4 transition-colors duration-1000 ${
+                  className={`flex flex-col overflow-hidden rounded-lg border transition-colors duration-1000 ${
                     justArrived.has(o.order_id)
                       ? "border-accent bg-accent-soft"
                       : "border-ink/10 bg-surface"
                   }`}
                 >
-                  <p className="font-mono text-sm text-ink/60">{o.order_id}</p>
-                  <p className="text-ink">
-                    {booksByIsbn[o.isbn]?.book_title ?? o.isbn} &times; {o.quantity}
-                  </p>
-                  <p className="text-sm text-ink/60">Customer: {o.customer_id}</p>
-                </li>
+                  <CardImage src={booksByIsbn[o.isbn]?.cover_url ?? null} alt="" aspect="portrait" />
+                  <div className="flex flex-1 flex-col gap-1 p-4">
+                    <p className="font-mono text-xs text-ink/60">{o.order_id}</p>
+                    <p className="text-ink">
+                      {booksByIsbn[o.isbn]?.book_title ?? o.isbn} &times; {o.quantity}
+                    </p>
+                    <p className="mt-auto text-sm text-ink/60">Customer: {o.customer_id}</p>
+                  </div>
+                </article>
               ))}
-            </ul>
+            </div>
           )}
         </section>
       )}
@@ -385,7 +388,7 @@ export function Dashboard({
                     handleSearch();
                   }
                 }}
-                className="min-h-[44px] flex-1 rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+                className="min-h-[44px] flex-1 rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
               />
               <button
                 type="button"
@@ -406,7 +409,7 @@ export function Dashboard({
                     <button
                       type="button"
                       onClick={() => pickCandidate(c)}
-                      className="flex w-full items-center gap-3 rounded-md border border-ink/10 bg-white p-2 text-left hover:border-accent"
+                      className="flex w-full items-center gap-3 rounded-md border border-ink/10 bg-field p-2 text-left hover:border-accent"
                     >
                       {c.coverUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -451,7 +454,7 @@ export function Dashboard({
                 placeholder="978-..."
                 value={newIsbn}
                 onChange={(e) => setNewIsbn(e.target.value)}
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 font-mono text-ink"
+                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 font-mono text-ink"
               />
             </div>
             <div>
@@ -465,7 +468,7 @@ export function Dashboard({
                 required
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
               />
             </div>
             <div>
@@ -479,7 +482,7 @@ export function Dashboard({
                 required
                 value={newAuthor}
                 onChange={(e) => setNewAuthor(e.target.value)}
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
               />
             </div>
             <div>
@@ -493,7 +496,7 @@ export function Dashboard({
                 placeholder="Leave blank to auto-fetch from Google Books by ISBN"
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+                className="mt-1 block w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
               />
             </div>
             <div>
@@ -507,7 +510,7 @@ export function Dashboard({
                 placeholder="Leave blank to auto-fetch from Google Books by ISBN"
                 value={newCoverUrl}
                 onChange={(e) => setNewCoverUrl(e.target.value)}
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
               />
             </div>
             <div>
@@ -521,7 +524,7 @@ export function Dashboard({
                 placeholder="No auto-fetch source for this one — type it in, or leave blank"
                 value={newAuthorBio}
                 onChange={(e) => setNewAuthorBio(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+                className="mt-1 block w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
               />
             </div>
             <div>
@@ -535,7 +538,7 @@ export function Dashboard({
                 min={0}
                 step={1}
                 placeholder="Leave blank if not yet inventoried"
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
               />
             </div>
             <div>
@@ -550,7 +553,7 @@ export function Dashboard({
                 step={0.01}
                 required
                 placeholder="0.00"
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
               />
             </div>
             <button
@@ -597,7 +600,7 @@ export function Dashboard({
                 name="item_name"
                 type="text"
                 required
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
               />
             </div>
             <div>
@@ -609,7 +612,7 @@ export function Dashboard({
                 name="category"
                 required
                 defaultValue="gift"
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
               >
                 <option value="gift">Gift</option>
                 <option value="card">Card</option>
@@ -626,7 +629,7 @@ export function Dashboard({
                 min={0}
                 step={1}
                 placeholder="Leave blank if not yet inventoried"
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
               />
             </div>
             <div>
@@ -641,7 +644,7 @@ export function Dashboard({
                 step={0.01}
                 required
                 placeholder="0.00"
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
               />
             </div>
             <div>
@@ -653,7 +656,7 @@ export function Dashboard({
                 name="image_url"
                 type="url"
                 placeholder="No auto-fetch source for merchandise — paste a product photo URL, or leave blank"
-                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
               />
             </div>
             <button

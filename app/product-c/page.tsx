@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getServerClient } from "@/lib/supabase-server";
-import { STORE_HOURS, STORE_POLICIES } from "@/lib/store-info";
+import { STORE_HOURS, STORE_POLICIES, STORE_FAQS } from "@/lib/store-info";
 import { formatEventTimestamp } from "@/types/schema";
 import { ChatWidget } from "./chat-widget";
 
@@ -46,6 +46,25 @@ export default async function ProductCPage() {
         <div className="rounded-lg border border-ink/10 bg-surface p-4">
           <h2 className="font-serif text-lg text-ink">Policies</h2>
           <p className="mt-1 whitespace-pre-line text-sm text-ink/70">{STORE_POLICIES}</p>
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-serif text-lg text-ink">Common questions</h2>
+        <div className="mt-2 divide-y divide-ink/10 rounded-lg border border-ink/10 bg-surface">
+          {STORE_FAQS.map((faq) => (
+            <details key={faq.question} className="group p-4 open:pb-4">
+              <summary className="cursor-pointer list-none font-medium text-ink marker:content-none">
+                <span className="flex items-center justify-between gap-3">
+                  {faq.question}
+                  <span aria-hidden className="text-ink/40 transition-transform group-open:rotate-45">
+                    +
+                  </span>
+                </span>
+              </summary>
+              <p className="mt-2 whitespace-pre-line text-sm text-ink/70">{faq.answer}</p>
+            </details>
+          ))}
         </div>
       </section>
 

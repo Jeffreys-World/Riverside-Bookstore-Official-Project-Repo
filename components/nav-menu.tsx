@@ -59,7 +59,7 @@ function TriggerButton({
 }
 
 const TRIGGER_CLASS = (active: boolean) =>
-  `whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+  `inline-block whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition-transform transition-colors duration-150 hover:scale-110 ${
     active ? "border-accent text-ink" : "border-transparent text-ink/60 hover:text-ink"
   }`;
 
@@ -94,7 +94,7 @@ export function NavMenu({
         <div
           role="menu"
           aria-label={label}
-          className="absolute right-0 top-full z-40 mt-1 min-w-[13rem] rounded-md border border-ink/10 bg-white py-1 shadow-lg"
+          className="absolute right-0 top-full z-40 mt-1 min-w-[13rem] rounded-md border border-ink/10 bg-surface py-1 shadow-lg"
         >
           {items.map((item) => (
             <Link
@@ -102,7 +102,7 @@ export function NavMenu({
               href={item.href}
               role="menuitem"
               onClick={() => setOpen(false)}
-              className="block px-4 py-2 text-sm text-ink hover:bg-surface"
+              className="block px-4 py-2 text-sm text-ink hover:bg-ink/5"
             >
               {item.label}
             </Link>
@@ -143,7 +143,7 @@ export function NavPreviewMenu({
         <div
           role="menu"
           aria-label={label}
-          className="absolute left-0 top-full z-40 mt-1 w-64 rounded-md border border-ink/10 bg-white p-4 shadow-lg"
+          className="absolute left-0 top-full z-40 mt-1 w-64 rounded-md border border-ink/10 bg-surface p-4 shadow-lg"
         >
           <p className="text-sm text-ink/70">{description}</p>
           <Link

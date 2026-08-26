@@ -77,7 +77,7 @@ export function ChatWidget() {
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Is Atomic Habits in stock?"
-          className="min-h-[44px] flex-1 rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+          className="min-h-[44px] flex-1 rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
         />
         <button
           type="submit"

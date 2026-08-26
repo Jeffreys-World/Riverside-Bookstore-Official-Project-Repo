@@ -33,6 +33,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${sans.variable} ${serif.variable} ${mono.variable}`}>
+      <head>
+        {/* Sets the `dark` class before first paint so there's no flash of
+            the wrong theme — this can't wait for React to hydrate, hence
+            a plain inline script rather than a useEffect in ThemeToggle. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("riverside-theme");var d=t?t==="dark":window.matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.classList.toggle("dark",d);}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="bg-paper font-sans text-ink">
         <CartProvider>
           <ProductDrawerProvider>
