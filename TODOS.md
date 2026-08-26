@@ -383,3 +383,26 @@ correctly, same recurring gap as prior sessions. Also unverified: the pre-existi
 on two staff-added books (flagged 2026-08-26, still open, unrelated to this session's changes) is
 now more visible since those books show a "$0.00" price tag on the redesigned, larger catalog
 cards.
+
+---
+
+## Add "search Google Books" to the staff add-book form
+
+**What:** User asked whether more books/merchandise could be added, then clarified they meant
+searching an external source (Google Books) by title/author rather than typing an exact ISBN.
+`lib/google-books.ts` gains `searchBookCandidates(query)` (free-text search, several results,
+filtered to ISBN-13 matches); Product B's "Add a book" form now has a search box above the manual
+fields — picking a result prefills ISBN/title/author and shows the cover.
+
+**Status (2026-08-26 build):** Done. Build/lint/typecheck/vitest pass. The search function itself
+was verified against the live Google Books API directly (not through the UI) — confirmed real
+results parse correctly, confirmed the retry-with-backoff logic (added after live testing hit
+transient 503s on 2 of 3 back-to-back calls) recovers on a later attempt. **Not verified**: the
+actual in-browser flow (search box -> pick a result -> submit -> book appears with cover) — same
+recurring gap as everything else in Product B this session, no staff account password available.
+Confirmed at the data level instead: 8 books / 6 merchandise rows currently exist and the catalog
+page has no display cap (`.select()` with no `.limit()`/`.range()`), so "only seeing 8" earlier
+in the session was the actual full catalog, not a display bug.
+
+**Still open:** merchandise (cards/gifts) has no equivalent add flow — the 6 seed rows are still
+the only way merchandise data gets in, same gap noted in the 2026-08-26 merchandise entry above.
