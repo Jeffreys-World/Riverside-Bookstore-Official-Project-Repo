@@ -137,6 +137,48 @@ export interface Order {
 }
 
 // ---------------------------------------------------------------------------
+// Reward tiers — informational only (0030_loyalty_program_expansion.sql).
+// reward_points now accrues as $1 = 1 point (floor(price * quantity) per
+// create_preorder call) rather than a flat +1 per order. Redemption for
+// every tier here happens in-store/manually — there's no voucher or
+// discount-code system in this app, matching its pay-in-person model — so
+// this list is just what the account page shows as "unlocked"/"next".
+// ---------------------------------------------------------------------------
+export interface RewardTier {
+  points: number;
+  label: string;
+  description: string;
+}
+
+export const REWARD_TIERS: RewardTier[] = [
+  {
+    points: 100,
+    label: "$5 store credit",
+    description: "Redeem for a $5 store credit voucher at the register.",
+  },
+  {
+    points: 250,
+    label: "Free ARC + tote bag",
+    description: "A free Advance Reader Copy from review stock, plus a branded tote bag.",
+  },
+  {
+    points: 500,
+    label: "20% off + VIP signing invite",
+    description: "20% off a single purchase, and an invitation to the next VIP author signing.",
+  },
+  {
+    points: 1000,
+    label: "Private Reader Hour",
+    description: "One hour of early access to the annual store sale, with refreshments.",
+  },
+];
+
+// Points cost for "Blind Date with a Book" — pegged to the same tier that
+// would otherwise unlock a free ARC + tote, since a mystery book is a
+// comparable value.
+export const BLIND_DATE_POINTS_COST = 250;
+
+// ---------------------------------------------------------------------------
 // Pickup scheduling — checkout's date + time-window selector.
 // Windows are fixed, not derived per-day from STORE_HOURS
 // (lib/store-info.ts) — the store's shortest open day (Sunday, 11am-5pm)

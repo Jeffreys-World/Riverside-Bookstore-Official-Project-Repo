@@ -132,6 +132,68 @@ export async function signUpCustomerAction(): Promise<SignUpCustomerResult> {
   return { ok: true, customerId: data as string };
 }
 
+export type RedeemBlindDateResult =
+  | { ok: true; orderId: string; isbn: string; bookTitle: string }
+  | { ok: false; message: string };
+
+/**
+ * "Blind Date with a Book" — spends BLIND_DATE_POINTS_COST points
+ * (types/schema.ts) on a random in-stock title via redeem_blind_date()
+ * (0030_loyalty_program_expansion.sql), which mints a real preorder. Same
+ * server-only mutation pattern as checkoutAction/signUpCustomerAction:
+ * the RPC isn't granted to anon, so this must run through the
+ * service-role client.
+ */
+export async function redeemBlindDateAction(customerId: string): Promise<RedeemBlindDateResult> {
+  if (!CUSTOMER_ID_REGEX.test(customerId)) {
+    return { ok: false, message: "Enter a valid customer ID (cust_XXXXX)." };
+  }
+
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase
+    .rpc("redeem_blind_date", { p_customer_id: customerId })
+    .single();
+
+  if (error || !data) {
+    if (error?.message.includes("INSUFFICIENT_POINTS")) {
+      return { ok: false, message: "Not enough points yet for a Blind Date with a Book." };
+    }
+    if (error?.message.includes("NO_BOOKS_AVAILABLE")) {
+      return { ok: false, message: "No titles are currently in stock for a mystery pick." };
+    }
+    return { ok: false, message: "Something went wrong. Please try again." };
+  }
+
+  const row = data as { order_id: string; isbn: string; book_title: string };
+  return { ok: true, orderId: row.order_id, isbn: row.isbn, bookTitle: row.book_title };
+}
+
+export type DonatePointsResult = { ok: true; pointsDonated: number } | { ok: false; message: string };
+
+/**
+ * Symbolic-only "donate my points" gesture (0030_loyalty_program_expansion.sql's
+ * donate_points()) — donates the entire current balance in one action, no
+ * partial-amount input. Same service-role pattern as the other
+ * points-spending action above.
+ */
+export async function donatePointsAction(customerId: string): Promise<DonatePointsResult> {
+  if (!CUSTOMER_ID_REGEX.test(customerId)) {
+    return { ok: false, message: "Enter a valid customer ID (cust_XXXXX)." };
+  }
+
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase.rpc("donate_points", { p_customer_id: customerId });
+
+  if (error || data === null) {
+    if (error?.message.includes("NO_POINTS_TO_DONATE")) {
+      return { ok: false, message: "You don't have any points to donate right now." };
+    }
+    return { ok: false, message: "Something went wrong. Please try again." };
+  }
+
+  return { ok: true, pointsDonated: data as number };
+}
+
 export interface AccountOrder {
   order_id: string;
   isbn: string;
