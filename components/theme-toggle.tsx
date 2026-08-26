@@ -4,17 +4,14 @@ import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "riverside-theme";
 
-// Mirrors the inline blocking script in app/layout.tsx that already set
-// the `dark` class before paint (avoiding a flash of the wrong theme) —
-// this just reads back what that script decided so the button's icon
-// matches on first render instead of assuming light.
-function readInitialIsDark(): boolean {
-  if (typeof document === "undefined") return false;
-  return document.documentElement.classList.contains("dark");
-}
-
 export function ThemeToggle() {
-  const [isDark, setIsDark] = useState(readInitialIsDark);
+  // Always starts false so the client's first render matches the
+  // server's (which has no access to the browser's dark-mode class or
+  // localStorage) — the inline blocking script in app/layout.tsx already
+  // set the real `dark` class on <html> before paint, this just corrects
+  // the icon to match right after hydration, in the same tick a user
+  // can't perceive as a flash.
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains("dark"));
