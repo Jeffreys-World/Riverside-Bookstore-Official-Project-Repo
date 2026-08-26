@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { formatEventTimestamp } from "@/types/schema";
 import { generateMarketingContentAction, type MarketingContentResult } from "./actions";
 
 interface BookRow {
@@ -10,8 +11,16 @@ interface BookRow {
   cover_url: string | null;
 }
 
-export function ContentForm({ books }: { books: BookRow[] }) {
+interface EventRow {
+  id: string;
+  event_title: string;
+  event_description: string;
+  author_event_at: string; // ISO 8601
+}
+
+export function ContentForm({ books, events }: { books: BookRow[]; events: EventRow[] }) {
   const [isbn, setIsbn] = useState("");
+  const [eventId, setEventId] = useState("");
   const [note, setNote] = useState("");
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<
@@ -21,6 +30,7 @@ export function ContentForm({ books }: { books: BookRow[] }) {
   >(null);
 
   const selectedBook = books.find((b) => b.isbn === isbn);
+  const selectedEvent = events.find((e) => e.id === eventId);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -29,9 +39,14 @@ export function ContentForm({ books }: { books: BookRow[] }) {
     setPending(true);
     setResult(null);
     try {
-      const transcript = selectedBook
-        ? `${note.trim()} (about "${selectedBook.book_title}" by ${selectedBook.author_name})`
-        : note.trim();
+      const facts: string[] = [];
+      if (selectedBook) facts.push(`about the book "${selectedBook.book_title}" by ${selectedBook.author_name}`);
+      if (selectedEvent) {
+        facts.push(
+          `about the upcoming event "${selectedEvent.event_title}" on ${formatEventTimestamp(selectedEvent.author_event_at)}: ${selectedEvent.event_description}`
+        );
+      }
+      const transcript = [note.trim(), ...facts].filter(Boolean).join(" — ");
       const res = await generateMarketingContentAction(transcript);
       setResult(
         res.ok ? { kind: "success", content: res.content } : { kind: "error", message: res.message }
@@ -88,22 +103,47 @@ export function ContentForm({ books }: { books: BookRow[] }) {
       </div>
 
       <div>
+        <label htmlFor="event_id" className="block text-sm font-medium text-ink">
+          Upcoming event (optional)
+        </label>
+        <select
+          id="event_id"
+          value={eventId}
+          onChange={(e) => setEventId(e.target.value)}
+          className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+        >
+          <option value="">— None —</option>
+          {events.map((ev) => (
+            <option key={ev.id} value={ev.id}>
+              {ev.event_title} — {formatEventTimestamp(ev.author_event_at)}
+            </option>
+          ))}
+        </select>
+        {events.length === 0 && (
+          <p className="mt-1 text-xs text-ink/50">No upcoming events on the calendar right now.</p>
+        )}
+        {selectedEvent && (
+          <p className="mt-2 text-sm text-ink/60">{selectedEvent.event_description}</p>
+        )}
+      </div>
+
+      <div>
         <label htmlFor="note" className="block text-sm font-medium text-ink">
-          What should we say about it?
+          Anything else to add? {selectedBook || selectedEvent ? "(optional)" : ""}
         </label>
         <textarea
           id="note"
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={4}
-          placeholder="e.g. staff pick this week, perfect cozy autumn read, event Thursday at 7pm"
+          placeholder="e.g. staff pick this week, perfect cozy autumn read"
           className="mt-1 block w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
         />
       </div>
 
       <button
         type="submit"
-        disabled={pending || !note.trim()}
+        disabled={pending || (!note.trim() && !selectedBook && !selectedEvent)}
         className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
       >
         {pending ? "Generating…" : "Generate content"}
