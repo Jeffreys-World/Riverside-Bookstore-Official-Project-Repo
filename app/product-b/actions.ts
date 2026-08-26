@@ -171,6 +171,37 @@ export async function removeMerchandiseStockAction(id: string, amount: number): 
   return { ok: true, stockQuantity: data as number };
 }
 
+export type DeleteListingResult = { ok: true } | { ok: false; message: string };
+
+/**
+ * Removes a listing entirely — for a genuinely bad entry (duplicate,
+ * wrong price), not a stock_quantity correction (see removeBookStockAction
+ * above, which only zeroes the count and leaves the listing visible).
+ * Fails cleanly if the title has real order history, since orders.isbn has
+ * no ON DELETE clause (0001's initial schema) — that foreign-key violation
+ * is surfaced as a plain message instead of leaking the raw Postgres error.
+ */
+export async function deleteBookAction(isbn: string): Promise<DeleteListingResult> {
+  const supabase = getServerClient();
+  const { error } = await supabase.from("books").delete().eq("isbn", isbn);
+  if (error) {
+    if (error.code === "23503") {
+      return { ok: false, message: "Can't remove — this title has order history. Use Remove stock instead." };
+    }
+    return { ok: false, message: error.message };
+  }
+  return { ok: true };
+}
+
+export async function deleteMerchandiseAction(id: string): Promise<DeleteListingResult> {
+  const supabase = getServerClient();
+  const { error } = await supabase.from("merchandise").delete().eq("id", id);
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+  return { ok: true };
+}
+
 export type SearchBooksResult =
   | { ok: true; results: BookSearchCandidate[] }
   | { ok: false; message: string };

@@ -14,7 +14,10 @@ import {
   searchBooksAction,
   removeBookStockAction,
   removeMerchandiseStockAction,
+  deleteBookAction,
+  deleteMerchandiseAction,
   type RemoveStockResult,
+  type DeleteListingResult,
 } from "./actions";
 import { StaffNav } from "./staff-nav";
 import { StampBadge, type StampTone } from "@/components/stamp-badge";
@@ -134,6 +137,44 @@ function StockRemoveControl({
   );
 }
 
+// Takes a listing off the site entirely — for a genuinely bad entry
+// (duplicate, wrong price), not a stock_quantity correction. A native
+// confirm() is enough friction for a staff-only tool doing something
+// irreversible; no need for a custom two-step UI.
+function DeleteListingControl({
+  label,
+  onDelete,
+}: {
+  label: string;
+  onDelete: () => Promise<DeleteListingResult>;
+}) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleClick() {
+    if (!window.confirm(`Remove "${label}" from the store entirely? This can't be undone.`)) return;
+    setPending(true);
+    setError("");
+    const res = await onDelete();
+    setPending(false);
+    if (!res.ok) setError(res.message);
+  }
+
+  return (
+    <div className="mt-1">
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={pending}
+        className="min-h-[36px] w-full rounded-md border border-claret/50 bg-claret-soft px-2 py-1 text-xs font-medium text-claret disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {pending ? "Removing…" : "Delete listing"}
+      </button>
+      {error && <p className="mt-1 text-[10px] text-claret">{error}</p>}
+    </div>
+  );
+}
+
 export function Dashboard({
   initialOrders,
   initialBooksByIsbn,
@@ -235,9 +276,20 @@ export function Dashboard({
     supabase,
     "product-b-books",
     // "*" (not just UPDATE) so a book another staff session just added
-    // via addBookAction appears here live too, not only stock changes.
+    // via addBookAction — or deleted via deleteBookAction — appears here
+    // live too, not only stock changes.
     { event: "*", schema: "public", table: "books" },
     (payload) => {
+      if (payload.eventType === "DELETE") {
+        const isbn = (payload.old as unknown as BookRow).isbn;
+        setBooksByIsbn((prev) => {
+          if (!isbn || !(isbn in prev)) return prev;
+          const next = { ...prev };
+          delete next[isbn];
+          return next;
+        });
+        return;
+      }
       const row = payload.new as unknown as BookRow;
       setBooksByIsbn((prev) => ({ ...prev, [row.isbn]: row }));
     }
@@ -248,6 +300,16 @@ export function Dashboard({
     "product-b-merchandise",
     { event: "*", schema: "public", table: "merchandise" },
     (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as unknown as MerchandiseRow).id;
+        setMerchandiseById((prev) => {
+          if (!id || !(id in prev)) return prev;
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+        return;
+      }
       const row = payload.new as unknown as MerchandiseRow;
       setMerchandiseById((prev) => ({ ...prev, [row.id]: row }));
     }
@@ -388,6 +450,20 @@ export function Dashboard({
                         return res;
                       }}
                     />
+                    <DeleteListingControl
+                      label={booksByIsbn[f.id]?.book_title ?? f.id}
+                      onDelete={async () => {
+                        const res = await deleteBookAction(f.id);
+                        if (res.ok) {
+                          setBooksByIsbn((prev) => {
+                            const next = { ...prev };
+                            delete next[f.id];
+                            return next;
+                          });
+                        }
+                        return res;
+                      }}
+                    />
                   </div>
                 </article>
               ))}
@@ -434,6 +510,20 @@ export function Dashboard({
                             return existing
                               ? { ...prev, [f.id]: { ...existing, stock_quantity: res.stockQuantity } }
                               : prev;
+                          });
+                        }
+                        return res;
+                      }}
+                    />
+                    <DeleteListingControl
+                      label={merchandiseById[f.id]?.item_name ?? f.id}
+                      onDelete={async () => {
+                        const res = await deleteMerchandiseAction(f.id);
+                        if (res.ok) {
+                          setMerchandiseById((prev) => {
+                            const next = { ...prev };
+                            delete next[f.id];
+                            return next;
                           });
                         }
                         return res;
