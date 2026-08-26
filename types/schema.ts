@@ -92,7 +92,10 @@ export interface Merchandise {
 }
 
 export interface AuthorEvent {
+  id: string; // uuid
+  isbn: string | null; // FK to books, nullable (e.g. a panel with no single tied title)
   event_title: string;
+  author_name: string | null; // null for pre-0015 rows that predate this column
   event_description: string;
   /**
    * Stored as TIMESTAMPTZ / ISO 8601 in Postgres. [FIXED: the original
@@ -103,13 +106,22 @@ export interface AuthorEvent {
    * store a pre-formatted string.]
    */
   author_event_at: string; // ISO 8601, e.g. "2026-09-05T18:30:00-07:00"
+  location: string; // 0015_events_details_and_rsvp.sql — defaults to the store's own address
 }
 
 export interface EventTicket {
   ticket_id: string; // tkt_XXXXX
   customer_id: string;
-  event_title: string;
+  event_id: string; // uuid, FK to author_events.id [FIXED: this field was event_title, which
+  // doesn't match the actual event_tickets table (0001_initial_schema.sql) — it has event_id, not
+  // event_title. Never actually read/written before 0015 wired up the real RSVP flow.]
 }
+
+export const rsvpRequestSchema = z.object({
+  customer_id: z.string().regex(CUSTOMER_ID_REGEX),
+  event_id: z.string().uuid(),
+});
+export type RsvpRequest = z.infer<typeof rsvpRequestSchema>;
 
 export interface Order {
   order_id: string; // ord_XXXXX
@@ -237,6 +249,16 @@ export function formatEventTimestamp(iso: string): string {
     dateStyle: "long",
     timeStyle: "short",
   }).format(d);
+}
+
+/** "2026-09-05T18:30:00-07:00" -> "September 5, 2026" — the Events page's separate Date column. */
+export function formatEventDate(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(new Date(iso));
+}
+
+/** "2026-09-05T18:30:00-07:00" -> "6:30 PM" — the Events page's separate Time column. */
+export function formatEventTime(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", { timeStyle: "short" }).format(new Date(iso));
 }
 
 /**
