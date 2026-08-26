@@ -23,6 +23,10 @@ All database queries and mutations MUST align with the exact shared PostgreSQL s
 - `order_id`: string (Format: ord_XXXXX)
 - `order_status`: string enum EXACTLY ['pending', 'preorder', 'shipped', 'completed'] (all-lowercase)
 - `reward_points`: integer (Default: 0)
+- `price` (on `books` and `merchandise`): numeric(10,2), must never be negative. Display-only —
+  no checkout/payment flow reads it; pre-orders stay pay-in-person-at-pickup.
+- `merchandise.category`: string enum EXACTLY ['card', 'gift'] (all-lowercase). Cards/gifts are a
+  separate table from `books` (no ISBN), not wired into `orders`/pre-orders — browse-only.
 
 ## Development Commands
 

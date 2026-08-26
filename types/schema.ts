@@ -70,6 +70,25 @@ export interface Book {
   reorder_threshold: number; // default 5
   cover_url: string | null; // null = no Google Books match / not yet backfilled
   description: string | null; // null = no Google Books match / not yet backfilled
+  price: number; // >= 0, display-only — no checkout/payment flow reads this yet
+}
+
+// ---------------------------------------------------------------------------
+// Merchandise — cards and small gifts. Separate from `books` because these
+// items have no ISBN; not part of the pre-order flow (see
+// supabase/migrations/0009_merchandise.sql).
+// ---------------------------------------------------------------------------
+
+export const MERCHANDISE_CATEGORIES = ["card", "gift"] as const;
+export type MerchandiseCategory = (typeof MERCHANDISE_CATEGORIES)[number];
+export const merchandiseCategorySchema = z.enum(MERCHANDISE_CATEGORIES);
+
+export interface Merchandise {
+  id: string; // uuid
+  item_name: string;
+  category: MerchandiseCategory;
+  price: number; // >= 0
+  stock_quantity: StockQuantity; // null = not yet inventoried, NEVER coerce to 0
 }
 
 export interface AuthorEvent {
@@ -117,11 +136,14 @@ export type CreatePreorderRequest = z.infer<typeof createPreorderRequestSchema>;
 // on purpose: leaving it blank stores null ("not yet inventoried"), the
 // same valid state books can already be in — never coerce a blank field
 // to 0 here.
+export const priceSchema = z.number().nonnegative();
+
 export const addBookRequestSchema = z.object({
   isbn: z.string().regex(ISBN13_REGEX),
   book_title: z.string().trim().min(1),
   author_name: z.string().trim().min(1),
   stock_quantity: stockQuantitySchema,
+  price: priceSchema,
 });
 export type AddBookRequest = z.infer<typeof addBookRequestSchema>;
 
