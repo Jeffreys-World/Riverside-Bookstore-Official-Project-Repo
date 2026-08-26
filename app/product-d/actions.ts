@@ -36,10 +36,20 @@ INSTAGRAM: <text>
 NEWSLETTER: <text>
 STAFF_PICK_CARD: <text>`;
 
+// Gemini sometimes wraps titles in markdown emphasis (*Klara and the Sun*)
+// even though this output is pasted as plain text into Instagram/newsletter
+// copy, where the asterisks would show up literally instead of rendering.
+function stripMarkdownEmphasis(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/_(.+?)_/g, "$1");
+}
+
 function parseSections(raw: string): MarketingContentResult {
   const get = (label: string) => {
     const match = raw.match(new RegExp(`${label}:\\s*([\\s\\S]*?)(?=\\n[A-Z_]+:|$)`));
-    return match?.[1]?.trim() ?? "";
+    return stripMarkdownEmphasis(match?.[1]?.trim() ?? "");
   };
   return {
     instagram: get("INSTAGRAM"),
