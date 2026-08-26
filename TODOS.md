@@ -446,3 +446,39 @@ low-risk/reversible:
   + a cart icon no longer overflow at 375px, so the scroll-fade hint added earlier this session is
   now dead code in the old four-tab layout it was built for (removed along with the rest of the
   old `SiteNav`).
+
+---
+
+## Asset fixes: 2 missing covers turned out to be 5 books with bad metadata
+
+**What:** User asked to fix "the two book items rendering without cover images." Investigating
+found the actual scope was bigger: 3 additional books had cover art AND descriptions, but for the
+*wrong book* — their stored ISBNs pointed at completely different real titles.
+
+**Why:** Direct user request (Asset Fixes section of the latest spec), scope expanded after
+actually querying Google Books for each stored ISBN rather than assuming "no cover" was the only
+failure mode.
+
+**Status (2026-08-26 build):** Done, verified against the live database (no code change — this
+was a data correction via direct Supabase REST PATCH calls, not a migration or script). Findings:
+- **Klara and the Sun**'s stored ISBN (9780593135204) is actually Project Hail Mary's — its
+  description was Project Hail Mary's blurb.
+- **The Vanishing Half**'s stored ISBN (9781984801258) is actually Untamed's.
+- **The Song of Achilles**'s stored ISBN (9780143127550) has no Google Books match at all; its
+  existing description was Everything I Never Told You's (likely from an earlier fuzzy
+  title-search backfill, not the ISBN-scoped lookup).
+- **Tomorrow, and Tomorrow, and Tomorrow**'s stored ISBN (9780593321447) is actually Sea of
+  Tranquility's — this is also one of the two books that showed no cover at all, and $0.00 price
+  (the pre-existing bug flagged 2026-08-26).
+- **Where the Crawdads Sing** was the other $0.00/no-cover book — its ISBN is correct, it had
+  simply never been backfilled.
+
+Fixed all 5 by searching Google Books by title/author (not trusting the stored ISBN) and patching
+`cover_url`/`description` directly; the two price-bug books also got a $18.00 price set (no real
+pricing data available, chosen to match the catalog's existing $16.99–$28.00 range). **The stored
+ISBNs themselves were left unchanged** — correcting them would mean changing a primary key with
+FK references (`orders`, `author_events`) for a fictional coursework catalog with no external
+system depending on the ISBN being real; not worth the risk for the cosmetic-only benefit.
+**Not fixed:** the root cause (why 3 of 6 originally-seeded books got wrong ISBNs) wasn't
+investigated — likely a copy-paste or fuzzy-match error in whatever process seeded the original
+6-book catalog, before this session's `searchBookCandidates`-based add-book flow existed.
