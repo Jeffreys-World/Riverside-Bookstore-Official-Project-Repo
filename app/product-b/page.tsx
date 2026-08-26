@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function ProductBPage({
   searchParams,
 }: {
-  searchParams: { addBookError?: string };
+  searchParams: { addBookError?: string; bookAdded?: string };
 }) {
   const supabase = getServerClient();
   const {
@@ -37,6 +37,7 @@ export default async function ProductBPage({
       initialOrders={orders ?? []}
       initialBooksByIsbn={Object.fromEntries((books ?? []).map((b) => [b.isbn, b]))}
       addBookError={searchParams.addBookError}
+      bookAdded={searchParams.bookAdded}
     />
   );
 }

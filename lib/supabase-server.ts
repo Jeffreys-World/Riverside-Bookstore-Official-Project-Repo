@@ -38,10 +38,26 @@ export function getServerClient() {
         return cookieStore.get(name)?.value;
       },
       set(name: string, value: string, options) {
-        cookieStore.set({ name, value, ...options });
+        // A Server Component (e.g. product-b/page.tsx reading the
+        // session) can trigger an auth token refresh, which tries to
+        // write the refreshed cookie here — but Next.js only allows
+        // cookie writes from a Server Action or Route Handler. There's
+        // no middleware refreshing the session ahead of render, so this
+        // throws on every such refresh. Safe to swallow: sign-in/
+        // sign-out already persist the cookies that matter from real
+        // Server Actions; a Server Component just can't also do it.
+        try {
+          cookieStore.set({ name, value, ...options });
+        } catch {
+          // ignore — see comment above
+        }
       },
       remove(name: string, options) {
-        cookieStore.set({ name, value: "", ...options });
+        try {
+          cookieStore.set({ name, value: "", ...options });
+        } catch {
+          // ignore — see comment above
+        }
       },
     },
   });

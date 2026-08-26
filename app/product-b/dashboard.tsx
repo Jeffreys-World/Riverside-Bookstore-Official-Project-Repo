@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getBrowserClient } from "@/lib/supabase-browser";
 import {
   evaluateStockStatus,
@@ -42,16 +42,32 @@ export function Dashboard({
   initialOrders,
   initialBooksByIsbn,
   addBookError,
+  bookAdded,
 }: {
   initialOrders: OrderRow[];
   initialBooksByIsbn: Record<string, BookRow>;
   addBookError?: string;
+  bookAdded?: string;
 }) {
   const [supabase] = useState(() => getBrowserClient());
   const [orders, setOrders] = useState<OrderRow[]>(initialOrders);
   const [booksByIsbn, setBooksByIsbn] = useState<Record<string, BookRow>>(initialBooksByIsbn);
   const [justArrived, setJustArrived] = useState<Set<string>>(new Set());
-  const [announcement, setAnnouncement] = useState("");
+  // Seeded from the ?bookAdded= redirect param so a screen reader
+  // announces a successful add the same way it announces a live pre-order
+  // arrival, even though this one came from a full page navigation, not
+  // a Realtime event.
+  const [announcement, setAnnouncement] = useState(bookAdded ? `Added ${bookAdded}` : "");
+
+  // The addBookAction redirect only changes the query string on the same
+  // route (/product-b -> /product-b?bookAdded=...), which the App Router
+  // doesn't treat as a navigation that resets scroll position — a staff
+  // member who submitted the form at the bottom of the page stays scrolled
+  // down and never sees the confirmation banner up top without this.
+  useEffect(() => {
+    if (bookAdded) window.scrollTo({ top: 0, behavior: "smooth" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const ordersStatus = useRealtimeSubscription(
     supabase,
@@ -113,6 +129,20 @@ export function Dashboard({
       <p aria-live="polite" role="status" className="sr-only">
         {announcement}
       </p>
+
+      {bookAdded && (
+        // Rendered at the top, not next to the form below, since a
+        // successful add navigates back to the top of the page — a staff
+        // member submitting the form at the bottom would otherwise see no
+        // visible confirmation at all without scrolling back down past
+        // Pending pre-orders and Stock levels.
+        <p
+          role="status"
+          className="mt-6 rounded-md border border-green-300 bg-green-50 p-3 text-sm text-green-800"
+        >
+          Added &ldquo;{bookAdded}&rdquo; to the catalog.
+        </p>
+      )}
 
       <section className="mt-10">
         <h2 className="font-serif text-xl text-ink">Pending pre-orders</h2>

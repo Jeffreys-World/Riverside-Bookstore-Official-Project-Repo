@@ -120,14 +120,13 @@ concurrent-row race (the primary key already makes a duplicate insert fail atomi
 New titles also stream live to any other open staff dashboard: the books Realtime
 subscription was widened from `UPDATE`-only to `*` in `lib/realtime` usage.
 
-**Still needed:** `supabase/migrations/0007_authenticated_books_insert.sql` (grants
-`authenticated` INSERT on `books`) is written but **not yet applied** to the live project —
-this session had no Supabase CLI login/project link (`supabase/` has no `config.toml`, no
-`SUPABASE_ACCESS_TOKEN`), same access gap noted in the staff-auth TODO above. Apply it via
-the Supabase dashboard SQL editor (project `jjzqyfugwpvnflymawog`) or `supabase login &&
-supabase link && supabase db push` before the form will actually insert successfully.
-Build/lint/typecheck/vitest all pass locally; the form itself is unverified in-browser
-pending that migration.
+**Status (2026-08-26, later):** `0007_authenticated_books_insert.sql` applied to the live
+project by the user via the Supabase CLI (`login && link && db push`) — this session had no
+CLI credentials to do it directly. Build/lint/typecheck/vitest all pass locally.
+**Still unverified:** the actual in-browser round trip (sign in as staff, submit the form,
+confirm the title and its Google Books cover/description appear) — this session had no
+staff account password to drive that itself; the user opted to test it manually rather than
+hand over credentials. Update this entry once that pass is done.
 
 ---
 

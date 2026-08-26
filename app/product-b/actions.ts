@@ -67,5 +67,5 @@ export async function addBookAction(formData: FormData) {
     // later via scripts/backfill-book-covers.mjs.
   }
 
-  redirect("/product-b");
+  redirect(`/product-b?bookAdded=${encodeURIComponent(book_title)}`);
 }
