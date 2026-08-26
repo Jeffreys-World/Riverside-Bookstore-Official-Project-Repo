@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase-server";
 import { fetchBookMetadata, searchBookCandidates, type BookSearchCandidate } from "@/lib/google-books";
-import { addBookRequestSchema } from "@/types/schema";
+import { addBookRequestSchema, addMerchandiseRequestSchema } from "@/types/schema";
 
 export async function signInAction(formData: FormData) {
   const email = String(formData.get("email") ?? "");
@@ -70,6 +70,38 @@ export async function addBookAction(formData: FormData) {
   }
 
   redirect(`/product-b?bookAdded=${encodeURIComponent(book_title)}`);
+}
+
+export async function addMerchandiseAction(formData: FormData) {
+  const rawStock = String(formData.get("stock_quantity") ?? "").trim();
+  const rawPrice = String(formData.get("price") ?? "").trim();
+  const parsed = addMerchandiseRequestSchema.safeParse({
+    item_name: String(formData.get("item_name") ?? ""),
+    category: String(formData.get("category") ?? ""),
+    stock_quantity: rawStock === "" ? null : Number(rawStock),
+    price: Number(rawPrice),
+  });
+
+  if (!parsed.success) {
+    redirect(
+      `/product-b?addMerchError=${encodeURIComponent(parsed.error.issues[0]?.message ?? "Invalid item details")}`
+    );
+  }
+
+  const { item_name, category, stock_quantity, price } = parsed.data;
+  const supabase = getServerClient();
+  const { error } = await supabase
+    .from("merchandise")
+    .insert({ item_name, category, stock_quantity, price });
+
+  if (error) {
+    // item_name is the table's unique key (0009_merchandise.sql) — a
+    // duplicate name is the one realistic failure here, same shape as a
+    // duplicate ISBN failing addBookAction's insert.
+    redirect(`/product-b?addMerchError=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(`/product-b?merchAdded=${encodeURIComponent(item_name)}`);
 }
 
 export type SearchBooksResult =

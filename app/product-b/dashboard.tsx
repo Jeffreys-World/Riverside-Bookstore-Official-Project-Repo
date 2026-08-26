@@ -8,7 +8,7 @@ import {
   type FlaggedInventoryRecord,
 } from "@/lib/inventory";
 import { useRealtimeSubscription } from "@/lib/realtime";
-import { addBookAction, searchBooksAction } from "./actions";
+import { addBookAction, addMerchandiseAction, searchBooksAction } from "./actions";
 import { StaffNav } from "./staff-nav";
 import { StampBadge, type StampTone } from "@/components/stamp-badge";
 import type { BookSearchCandidate } from "@/lib/google-books";
@@ -69,6 +69,8 @@ export function Dashboard({
   initialMerchandiseById,
   addBookError,
   bookAdded,
+  addMerchError,
+  merchAdded,
   loadError,
 }: {
   initialOrders: OrderRow[];
@@ -76,6 +78,8 @@ export function Dashboard({
   initialMerchandiseById: Record<string, MerchandiseRow>;
   addBookError?: string;
   bookAdded?: string;
+  addMerchError?: string;
+  merchAdded?: string;
   loadError?: string;
 }) {
   const [supabase] = useState(() => getBrowserClient());
@@ -84,11 +88,13 @@ export function Dashboard({
   const [merchandiseById, setMerchandiseById] =
     useState<Record<string, MerchandiseRow>>(initialMerchandiseById);
   const [justArrived, setJustArrived] = useState<Set<string>>(new Set());
-  // Seeded from the ?bookAdded= redirect param so a screen reader
-  // announces a successful add the same way it announces a live pre-order
-  // arrival, even though this one came from a full page navigation, not
-  // a Realtime event.
-  const [announcement, setAnnouncement] = useState(bookAdded ? `Added ${bookAdded}` : "");
+  // Seeded from the ?bookAdded=/?merchAdded= redirect params so a screen
+  // reader announces a successful add the same way it announces a live
+  // pre-order arrival, even though this one came from a full page
+  // navigation, not a Realtime event.
+  const [announcement, setAnnouncement] = useState(
+    bookAdded ? `Added ${bookAdded}` : merchAdded ? `Added ${merchAdded}` : ""
+  );
 
   // Add-book form fields are lifted into state so a Google Books search
   // result can prefill them — the form still submits natively via
@@ -135,7 +141,7 @@ export function Dashboard({
   // member who submitted the form at the bottom of the page stays scrolled
   // down and never sees the confirmation banner up top without this.
   useEffect(() => {
-    if (bookAdded) window.scrollTo({ top: 0, behavior: "smooth" });
+    if (bookAdded || merchAdded) window.scrollTo({ top: 0, behavior: "smooth" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -231,6 +237,15 @@ export function Dashboard({
           className="mt-6 rounded-md border border-accent/30 bg-accent-soft p-3 text-sm text-ink"
         >
           Added &ldquo;{bookAdded}&rdquo; to the catalog.
+        </p>
+      )}
+
+      {merchAdded && (
+        <p
+          role="status"
+          className="mt-6 rounded-md border border-accent/30 bg-accent-soft p-3 text-sm text-ink"
+        >
+          Added &ldquo;{merchAdded}&rdquo; to merchandise.
         </p>
       )}
 
@@ -514,6 +529,89 @@ export function Dashboard({
               className="rounded-md border border-claret/30 bg-claret-soft p-3 text-sm text-claret"
             >
               {addBookError}
+            </p>
+          )}
+        </form>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="font-serif text-xl text-ink">Add merchandise</h2>
+        <p className="mt-1 text-sm text-ink/60">
+          Cards and gifts — browse-only, not part of the pre-order flow.
+        </p>
+        <form
+          action={addMerchandiseAction}
+          className="mt-4 space-y-4 rounded-lg border border-ink/10 bg-surface p-4"
+        >
+          <div>
+            <label htmlFor="item_name" className="block text-sm font-medium text-ink">
+              Item name
+            </label>
+            <input
+              id="item_name"
+              name="item_name"
+              type="text"
+              required
+              className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+            />
+          </div>
+          <div>
+            <label htmlFor="category" className="block text-sm font-medium text-ink">
+              Category
+            </label>
+            <select
+              id="category"
+              name="category"
+              required
+              defaultValue="gift"
+              className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+            >
+              <option value="gift">Gift</option>
+              <option value="card">Card</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="merch_stock_quantity" className="block text-sm font-medium text-ink">
+              Stock quantity
+            </label>
+            <input
+              id="merch_stock_quantity"
+              name="stock_quantity"
+              type="number"
+              min={0}
+              step={1}
+              placeholder="Leave blank if not yet inventoried"
+              className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+            />
+          </div>
+          <div>
+            <label htmlFor="merch_price" className="block text-sm font-medium text-ink">
+              Price
+            </label>
+            <input
+              id="merch_price"
+              name="price"
+              type="number"
+              min={0}
+              step={0.01}
+              required
+              placeholder="0.00"
+              className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+            />
+          </div>
+          <button
+            type="submit"
+            className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper"
+          >
+            Add merchandise
+          </button>
+
+          {addMerchError && (
+            <p
+              role="alert"
+              className="rounded-md border border-claret/30 bg-claret-soft p-3 text-sm text-claret"
+            >
+              {addMerchError}
             </p>
           )}
         </form>

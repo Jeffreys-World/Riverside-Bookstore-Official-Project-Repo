@@ -213,6 +213,19 @@ export const addBookRequestSchema = z.object({
 });
 export type AddBookRequest = z.infer<typeof addBookRequestSchema>;
 
+// addMerchandiseRequestSchema — Product B's staff "add merchandise" flow
+// (app/product-b/actions.ts's addMerchandiseAction). No ISBN/Google Books
+// lookup, unlike books — merchandise.item_name is the table's own unique
+// key (0009_merchandise.sql), so a duplicate name fails atomically the
+// same way a duplicate ISBN does for books.
+export const addMerchandiseRequestSchema = z.object({
+  item_name: z.string().trim().min(1),
+  category: merchandiseCategorySchema,
+  stock_quantity: stockQuantitySchema,
+  price: priceSchema,
+});
+export type AddMerchandiseRequest = z.infer<typeof addMerchandiseRequestSchema>;
+
 // ---------------------------------------------------------------------------
 // Display formatting helpers (UI layer only — never used for storage)
 // ---------------------------------------------------------------------------

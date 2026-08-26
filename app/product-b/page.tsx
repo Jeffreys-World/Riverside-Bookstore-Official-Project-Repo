@@ -10,7 +10,12 @@ export const dynamic = "force-dynamic";
 export default async function ProductBPage({
   searchParams,
 }: {
-  searchParams: { addBookError?: string; bookAdded?: string };
+  searchParams: {
+    addBookError?: string;
+    bookAdded?: string;
+    addMerchError?: string;
+    merchAdded?: string;
+  };
 }) {
   const supabase = getServerClient();
   const {
@@ -59,6 +64,8 @@ export default async function ProductBPage({
       initialMerchandiseById={Object.fromEntries((merchandiseRes.data ?? []).map((m) => [m.id, m]))}
       addBookError={searchParams.addBookError}
       bookAdded={searchParams.bookAdded}
+      addMerchError={searchParams.addMerchError}
+      merchAdded={searchParams.merchAdded}
       loadError={loadError}
     />
   );
