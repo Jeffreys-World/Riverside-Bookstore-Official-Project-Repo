@@ -3,10 +3,10 @@
  * scripts/backfill-book-covers.mjs
  *
  * One-time/on-demand admin script: fills in cover_url/description for any
- * row in `books` where they're still null, via Google Books
- * (lib/google-books.ts's fetch logic, inlined here since this runs outside
- * Next's module graph). Uses the service-role key to bypass RLS — run
- * manually from a trusted machine, never from app code.
+ * row in `books` where they're still null, via Google Books with an Open
+ * Library cover fallback (lib/google-books.ts's fetch logic, inlined here
+ * since this runs outside Next's module graph). Uses the service-role key
+ * to bypass RLS — run manually from a trusted machine, never from app code.
  *
  * Usage: node scripts/backfill-book-covers.mjs
  * Requires NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in
@@ -31,38 +31,72 @@ function loadEnvLocal() {
 }
 
 const MAX_ATTEMPTS = 3;
+const OPEN_LIBRARY_COVER_ATTEMPTS = 2;
+
+// Open Library's covers CDN serves a generic "no cover" image instead of a
+// 404 unless ?default=false is passed.
+async function fetchOpenLibraryCover(isbn) {
+  const url = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg?default=false`;
+  for (let attempt = 1; attempt <= OPEN_LIBRARY_COVER_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(url, { method: "HEAD" });
+      if (res.ok) return url;
+      if (res.status === 404) return null;
+    } catch {
+      // Network error — fall through to retry/give up below.
+    }
+    if (attempt < OPEN_LIBRARY_COVER_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+  return null;
+}
 
 // Retries transient errors (429/5xx — Google Books' backend returns
 // occasional 503s even on a valid key) instead of treating them as "no
 // match," which would silently drop data. 404 means "no such volume" and
-// is not retried.
+// is not retried. Falls back to Open Library for the cover when Google
+// Books has none — its coverage skews toward newer/bestselling editions.
 async function fetchBookMetadata(isbn, apiKey) {
   const params = new URLSearchParams({ q: `isbn:${isbn}` });
   if (apiKey) params.set("key", apiKey);
 
+  let coverUrl = null;
+  let description = null;
   let lastStatus = null;
+
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const res = await fetch(`https://www.googleapis.com/books/v1/volumes?${params}`);
     if (res.ok) {
       const data = await res.json();
       const volumeInfo = data?.items?.[0]?.volumeInfo;
-      if (!volumeInfo) return null;
-
-      const rawThumbnail = volumeInfo.imageLinks?.thumbnail ?? volumeInfo.imageLinks?.smallThumbnail;
-      return {
-        coverUrl: rawThumbnail ? rawThumbnail.replace(/^http:/, "https:") : null,
-        description: volumeInfo.description ?? null,
-      };
+      if (volumeInfo) {
+        const rawThumbnail = volumeInfo.imageLinks?.thumbnail ?? volumeInfo.imageLinks?.smallThumbnail;
+        coverUrl = rawThumbnail ? rawThumbnail.replace(/^http:/, "https:") : null;
+        description = volumeInfo.description ?? null;
+      }
+      lastStatus = null;
+      break;
     }
 
     lastStatus = res.status;
-    if (res.status === 404) return null;
+    if (res.status === 404) break;
     if (attempt < MAX_ATTEMPTS) {
       await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
     }
   }
 
-  throw new Error(`Google Books request failed after ${MAX_ATTEMPTS} attempts (last status ${lastStatus})`);
+  const googleBooksFailed = lastStatus !== null && lastStatus !== 404;
+
+  if (!coverUrl) {
+    coverUrl = await fetchOpenLibraryCover(isbn);
+  }
+
+  if (googleBooksFailed && !coverUrl) {
+    throw new Error(`Google Books request failed after ${MAX_ATTEMPTS} attempts (last status ${lastStatus})`);
+  }
+
+  return coverUrl || description ? { coverUrl, description } : null;
 }
 
 async function main() {
@@ -103,7 +137,7 @@ async function main() {
       continue;
     }
     if (!metadata) {
-      console.warn(`  ✗ ${book.book_title} (${book.isbn}): no Google Books match`);
+      console.warn(`  ✗ ${book.book_title} (${book.isbn}): no match on Google Books or Open Library`);
       continue;
     }
 

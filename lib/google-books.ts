@@ -16,47 +16,92 @@ export interface BookMetadata {
 
 const MAX_ATTEMPTS = 3;
 
+const OPEN_LIBRARY_COVER_ATTEMPTS = 2;
+
 /**
- * Looks up a single ISBN. Returns null when Google Books has no match for
- * the ISBN (a real "not found") — callers treat that as a normal,
- * expected outcome, not an exception. A transient server error (429/5xx)
- * is retried with backoff rather than treated as "no match": Google
- * Books' backend returns occasional 503s even on valid keys/quota, and
- * conflating that with "this book doesn't exist" silently drops data.
+ * Open Library's covers CDN serves a generic "no cover available" image
+ * instead of a 404 unless ?default=false is passed — that's what lets this
+ * tell "has a cover for this ISBN" apart from "doesn't."
+ */
+async function fetchOpenLibraryCover(isbn: string): Promise<string | null> {
+  const url = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg?default=false`;
+  for (let attempt = 1; attempt <= OPEN_LIBRARY_COVER_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(url, { method: "HEAD" });
+      if (res.ok) return url;
+      if (res.status === 404) return null;
+    } catch {
+      // Network error — fall through to retry/give up below.
+    }
+    if (attempt < OPEN_LIBRARY_COVER_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+  return null;
+}
+
+/**
+ * Looks up a single ISBN. Returns null when neither source has anything for
+ * it — callers treat that as a normal, expected outcome, not an exception.
+ * A transient Google Books server error (429/5xx) is retried with backoff
+ * rather than treated as "no match": Google Books' backend returns
+ * occasional 503s even on valid keys/quota, and conflating that with "this
+ * book doesn't exist" silently drops data.
+ *
+ * Falls back to Open Library for the cover when Google Books has none —
+ * Google Books' coverage skews toward newer/bestselling editions, so
+ * smaller or older titles often have no thumbnail there even when Open
+ * Library has one, and Open Library needs no API key.
  */
 export async function fetchBookMetadata(isbn: string): Promise<BookMetadata | null> {
   const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
   const params = new URLSearchParams({ q: `isbn:${isbn}` });
   if (apiKey) params.set("key", apiKey);
 
+  let coverUrl: string | null = null;
+  let description: string | null = null;
   let lastStatus: number | null = null;
+
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const res = await fetch(`https://www.googleapis.com/books/v1/volumes?${params}`);
     if (res.ok) {
       const data = await res.json();
       const volumeInfo = data?.items?.[0]?.volumeInfo;
-      if (!volumeInfo) return null;
-
-      const rawThumbnail: string | undefined =
-        volumeInfo.imageLinks?.thumbnail ?? volumeInfo.imageLinks?.smallThumbnail;
-
-      return {
+      if (volumeInfo) {
+        const rawThumbnail: string | undefined =
+          volumeInfo.imageLinks?.thumbnail ?? volumeInfo.imageLinks?.smallThumbnail;
         // Google Books serves http:// links; upgrade to https so they don't
         // get blocked as mixed content on an https-served app.
-        coverUrl: rawThumbnail ? rawThumbnail.replace(/^http:/, "https:") : null,
-        description: volumeInfo.description ?? null,
-      };
+        coverUrl = rawThumbnail ? rawThumbnail.replace(/^http:/, "https:") : null;
+        description = volumeInfo.description ?? null;
+      }
+      lastStatus = null;
+      break;
     }
 
     lastStatus = res.status;
     // 404 means "no such volume" — not transient, don't retry.
-    if (res.status === 404) return null;
+    if (res.status === 404) break;
     if (attempt < MAX_ATTEMPTS) {
       await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
     }
   }
 
-  throw new Error(`Google Books request failed after ${MAX_ATTEMPTS} attempts (last status ${lastStatus})`);
+  const googleBooksFailed = lastStatus !== null && lastStatus !== 404;
+
+  if (!coverUrl) {
+    coverUrl = await fetchOpenLibraryCover(isbn);
+  }
+
+  // A persistent Google Books failure (not a clean 404) only becomes fatal
+  // if Open Library couldn't cover for it either — otherwise this is
+  // silent partial progress: the caller gets what Open Library found, and
+  // description stays null so a later run still picks this ISBN back up.
+  if (googleBooksFailed && !coverUrl) {
+    throw new Error(`Google Books request failed after ${MAX_ATTEMPTS} attempts (last status ${lastStatus})`);
+  }
+
+  return coverUrl || description ? { coverUrl, description } : null;
 }
 
 export interface BookSearchCandidate {
