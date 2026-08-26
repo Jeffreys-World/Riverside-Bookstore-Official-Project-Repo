@@ -3,6 +3,8 @@ import { Inter, Fraunces, IBM_Plex_Mono } from "next/font/google";
 import { SiteNav } from "./site-nav";
 import { CartProvider } from "@/components/cart-provider";
 import { CartDrawer } from "@/components/cart-drawer";
+import { ProductDrawerProvider } from "@/components/product-drawer-provider";
+import { ProductDrawer } from "@/components/product-drawer";
 import "./globals.css";
 
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
@@ -33,9 +35,12 @@ export default function RootLayout({
     <html lang="en" className={`${sans.variable} ${serif.variable} ${mono.variable}`}>
       <body className="bg-paper font-sans text-ink">
         <CartProvider>
-          <SiteNav />
-          {children}
-          <CartDrawer />
+          <ProductDrawerProvider>
+            <SiteNav />
+            {children}
+            <CartDrawer />
+            <ProductDrawer />
+          </ProductDrawerProvider>
         </CartProvider>
       </body>
     </html>

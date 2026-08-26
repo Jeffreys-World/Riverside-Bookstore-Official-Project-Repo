@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { useCart } from "@/components/cart-provider";
+import { useProductDrawer } from "@/components/product-drawer-provider";
 import { StampBadge } from "@/components/stamp-badge";
 import { fulfillmentBadgeFor } from "@/lib/inventory";
 import type { StockStatus } from "@/types/schema";
@@ -21,6 +22,7 @@ const currencyFormatter = new Intl.NumberFormat("en-US", { style: "currency", cu
 
 export function BookCard(book: BookCardProps) {
   const { addItem, items } = useCart();
+  const { open: openDrawer } = useProductDrawer();
   const [justAdded, setJustAdded] = useState(false);
   const badge = fulfillmentBadgeFor(book.status);
   const inCart = items.find((i) => i.isbn === book.isbn);
@@ -36,7 +38,8 @@ export function BookCard(book: BookCardProps) {
   const orderable = book.status === "in_stock" || book.status === "low_stock";
   const maxQuantity = book.stockQuantity ?? 0;
 
-  function handleAdd() {
+  function handleAdd(e: MouseEvent) {
+    e.stopPropagation(); // don't also open the detail drawer
     addItem({
       isbn: book.isbn,
       book_title: book.book_title,
@@ -49,8 +52,34 @@ export function BookCard(book: BookCardProps) {
     setTimeout(() => setJustAdded(false), 1500);
   }
 
+  function handleOpenDetails() {
+    openDrawer({
+      kind: "book",
+      isbn: book.isbn,
+      title: book.book_title,
+      author: book.author_name,
+      coverUrl: book.cover_url,
+      description: book.description,
+      price: book.price,
+      status: book.status,
+      stockQuantity: book.stockQuantity,
+    });
+  }
+
   return (
-    <article className="flex flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface transition hover:-translate-y-0.5 hover:shadow-md">
+    <article
+      onClick={handleOpenDetails}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleOpenDetails();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`View details for ${book.book_title}`}
+      className="flex cursor-pointer flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface transition hover:-translate-y-0.5 hover:shadow-md"
+    >
       <div className="aspect-[2/3] w-full bg-ink/5">
         {book.cover_url ? (
           // eslint-disable-next-line @next/next/no-img-element

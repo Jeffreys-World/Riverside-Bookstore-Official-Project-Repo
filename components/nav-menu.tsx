@@ -1,29 +1,20 @@
 "use client";
 
 /**
- * Dropdown nav trigger — "My Account" and "Support Center" each show two
- * entry points on interaction instead of linking directly, per the
- * Account Navigation Gateway / Support Center spec. Closes on outside
- * click, Escape, or picking an item.
+ * Dropdown nav triggers for the site header. Two shapes share one
+ * open/close interaction (click to open, closes on outside click,
+ * Escape, or picking an item):
+ * - NavMenu: a short list of links (My Account -> Customer/Staff Account,
+ *   Support Center -> FAQ/Contact Us).
+ * - NavPreviewMenu: one description line + a single click-through CTA
+ *   (Books/Gifts/Events' "overview description with click-through
+ *   filter" pattern).
  */
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-export interface NavMenuItem {
-  href: string;
-  label: string;
-}
-
-export function NavMenu({
-  label,
-  active,
-  items,
-}: {
-  label: string;
-  active: boolean;
-  items: NavMenuItem[];
-}) {
+function useDropdown() {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -45,6 +36,49 @@ export function NavMenu({
     };
   }, [open]);
 
+  return { open, setOpen, containerRef };
+}
+
+function TriggerButton({
+  label,
+  active,
+  open,
+}: {
+  label: string;
+  active: boolean;
+  open: boolean;
+}) {
+  return (
+    <>
+      {label}
+      <span aria-hidden className="ml-1 inline-block text-[10px] align-middle">
+        {open ? "▲" : "▼"}
+      </span>
+    </>
+  );
+}
+
+const TRIGGER_CLASS = (active: boolean) =>
+  `whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+    active ? "border-accent text-ink" : "border-transparent text-ink/60 hover:text-ink"
+  }`;
+
+export interface NavMenuItem {
+  href: string;
+  label: string;
+}
+
+export function NavMenu({
+  label,
+  active,
+  items,
+}: {
+  label: string;
+  active: boolean;
+  items: NavMenuItem[];
+}) {
+  const { open, setOpen, containerRef } = useDropdown();
+
   return (
     <div ref={containerRef} className="relative">
       <button
@@ -52,20 +86,15 @@ export function NavMenu({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
-          active ? "border-accent text-ink" : "border-transparent text-ink/60 hover:text-ink"
-        }`}
+        className={TRIGGER_CLASS(active)}
       >
-        {label}
-        <span aria-hidden className="ml-1 inline-block text-[10px] align-middle">
-          {open ? "▲" : "▼"}
-        </span>
+        <TriggerButton label={label} active={active} open={open} />
       </button>
       {open && (
         <div
           role="menu"
           aria-label={label}
-          className="absolute left-0 top-full z-40 mt-1 min-w-[13rem] rounded-md border border-ink/10 bg-white py-1 shadow-lg"
+          className="absolute right-0 top-full z-40 mt-1 min-w-[13rem] rounded-md border border-ink/10 bg-white py-1 shadow-lg"
         >
           {items.map((item) => (
             <Link
@@ -78,6 +107,53 @@ export function NavMenu({
               {item.label}
             </Link>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function NavPreviewMenu({
+  label,
+  description,
+  ctaHref,
+  ctaLabel,
+  active,
+}: {
+  label: string;
+  description: string;
+  ctaHref: string;
+  ctaLabel: string;
+  active: boolean;
+}) {
+  const { open, setOpen, containerRef } = useDropdown();
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={TRIGGER_CLASS(active)}
+      >
+        <TriggerButton label={label} active={active} open={open} />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          aria-label={label}
+          className="absolute left-0 top-full z-40 mt-1 w-64 rounded-md border border-ink/10 bg-white p-4 shadow-lg"
+        >
+          <p className="text-sm text-ink/70">{description}</p>
+          <Link
+            href={ctaHref}
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="mt-3 inline-block text-sm font-medium text-accent underline-offset-2 hover:underline"
+          >
+            {ctaLabel} →
+          </Link>
         </div>
       )}
     </div>
