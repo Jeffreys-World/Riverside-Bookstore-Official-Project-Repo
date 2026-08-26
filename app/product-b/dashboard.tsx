@@ -8,7 +8,9 @@ import {
   type FlaggedInventoryRecord,
 } from "@/lib/inventory";
 import { useRealtimeSubscription } from "@/lib/realtime";
-import { signOutAction, addBookAction } from "./actions";
+import { addBookAction } from "./actions";
+import { StaffNav } from "./staff-nav";
+import { StampBadge, type StampTone } from "@/components/stamp-badge";
 
 interface OrderRow {
   order_id: string;
@@ -41,6 +43,13 @@ const STATUS_LABEL: Record<FlaggedInventoryRecord["status"], string> = {
   low_stock: "Low stock",
   needs_attention: "Not yet inventoried",
   in_stock: "In stock",
+};
+
+const STATUS_TONE: Record<FlaggedInventoryRecord["status"], StampTone> = {
+  out_of_stock: "negative",
+  low_stock: "pending",
+  needs_attention: "neutral",
+  in_stock: "positive",
 };
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -148,20 +157,14 @@ export function Dashboard({
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
+      <StaffNav active="dashboard" />
       <div className="flex items-center justify-between gap-4">
-        <h1 className="font-serif text-3xl text-ink">Staff Dashboard</h1>
-        <div className="flex items-center gap-3">
-          {reconnecting && (
-            <span className="rounded-full bg-amber-100 px-3 py-1 text-sm text-amber-800">
-              Reconnecting…
-            </span>
-          )}
-          <form action={signOutAction}>
-            <button type="submit" className="text-sm text-ink/60 underline">
-              Sign out
-            </button>
-          </form>
-        </div>
+        <h1 className="font-serif text-3xl text-ink">Inventory</h1>
+        {reconnecting && (
+          <span className="rounded-full bg-gold/20 px-3 py-1 text-sm text-ink">
+            Reconnecting…
+          </span>
+        )}
       </div>
 
       <p aria-live="polite" role="status" className="sr-only">
@@ -171,7 +174,7 @@ export function Dashboard({
       {loadError && (
         <p
           role="alert"
-          className="mt-6 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800"
+          className="mt-6 rounded-md border border-claret/30 bg-claret-soft p-3 text-sm text-claret"
         >
           {loadError}
         </p>
@@ -185,7 +188,7 @@ export function Dashboard({
         // Pending pre-orders and Stock levels.
         <p
           role="status"
-          className="mt-6 rounded-md border border-green-300 bg-green-50 p-3 text-sm text-green-800"
+          className="mt-6 rounded-md border border-accent/30 bg-accent-soft p-3 text-sm text-ink"
         >
           Added &ldquo;{bookAdded}&rdquo; to the catalog.
         </p>
@@ -194,7 +197,7 @@ export function Dashboard({
       <section className="mt-10">
         <h2 className="font-serif text-xl text-ink">Pending pre-orders</h2>
         {orders.length === 0 ? (
-          <p className="mt-4 rounded-lg border border-ink/10 bg-white p-4 text-ink/70">
+          <p className="mt-4 rounded-lg border border-ink/10 bg-surface p-4 text-ink/70">
             No pending pre-orders right now.
           </p>
         ) : (
@@ -205,7 +208,7 @@ export function Dashboard({
                 className={`rounded-lg border p-4 transition-colors duration-1000 ${
                   justArrived.has(o.order_id)
                     ? "border-accent bg-accent-soft"
-                    : "border-ink/10 bg-white"
+                    : "border-ink/10 bg-surface"
                 }`}
               >
                 <p className="font-mono text-sm text-ink/60">{o.order_id}</p>
@@ -222,7 +225,7 @@ export function Dashboard({
       <section className="mt-12">
         <h2 className="font-serif text-xl text-ink">Stock levels</h2>
         {flaggedBooks.length === 0 ? (
-          <p className="mt-4 rounded-lg border border-ink/10 bg-white p-4 text-ink/70">
+          <p className="mt-4 rounded-lg border border-ink/10 bg-surface p-4 text-ink/70">
             No titles in the catalog yet.
           </p>
         ) : (
@@ -230,7 +233,7 @@ export function Dashboard({
             {flaggedBooks.map((f) => (
               <li
                 key={f.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-ink/10 bg-white p-4"
+                className="flex items-center justify-between gap-3 rounded-lg border border-ink/10 bg-surface p-4"
               >
                 <span className="flex min-w-0 items-center gap-3">
                   {booksByIsbn[f.id]?.cover_url ? (
@@ -262,7 +265,7 @@ export function Dashboard({
                   <span className="font-mono text-sm text-ink/60">
                     {f.stockQuantity ?? "—"}
                   </span>
-                  <span className="text-sm text-ink/60">{STATUS_LABEL[f.status]}</span>
+                  <StampBadge tone={STATUS_TONE[f.status]}>{STATUS_LABEL[f.status]}</StampBadge>
                 </span>
               </li>
             ))}
@@ -273,7 +276,7 @@ export function Dashboard({
       <section className="mt-12">
         <h2 className="font-serif text-xl text-ink">Merchandise stock</h2>
         {flaggedMerchandise.length === 0 ? (
-          <p className="mt-4 rounded-lg border border-ink/10 bg-white p-4 text-ink/70">
+          <p className="mt-4 rounded-lg border border-ink/10 bg-surface p-4 text-ink/70">
             No cards or gifts in the catalog yet.
           </p>
         ) : (
@@ -281,7 +284,7 @@ export function Dashboard({
             {flaggedMerchandise.map((f) => (
               <li
                 key={f.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-ink/10 bg-white p-4"
+                className="flex items-center justify-between gap-3 rounded-lg border border-ink/10 bg-surface p-4"
               >
                 <span className="min-w-0">
                   <span className="truncate text-ink">{merchandiseById[f.id]?.item_name ?? f.id}</span>
@@ -300,7 +303,7 @@ export function Dashboard({
                   <span className="font-mono text-sm text-ink/60">
                     {f.stockQuantity ?? "—"}
                   </span>
-                  <span className="text-sm text-ink/60">{STATUS_LABEL[f.status]}</span>
+                  <StampBadge tone={STATUS_TONE[f.status]}>{STATUS_LABEL[f.status]}</StampBadge>
                 </span>
               </li>
             ))}
@@ -313,7 +316,7 @@ export function Dashboard({
         <p className="mt-1 text-sm text-ink/60">
           Cover and description are looked up from Google Books automatically once added.
         </p>
-        <form action={addBookAction} className="mt-4 space-y-4 rounded-lg border border-ink/10 bg-white p-4">
+        <form action={addBookAction} className="mt-4 space-y-4 rounded-lg border border-ink/10 bg-surface p-4">
           <div>
             <label htmlFor="isbn" className="block text-sm font-medium text-ink">
               ISBN
@@ -382,7 +385,7 @@ export function Dashboard({
           </div>
           <button
             type="submit"
-            className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-white"
+            className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper"
           >
             Add book
           </button>
@@ -390,7 +393,7 @@ export function Dashboard({
           {addBookError && (
             <p
               role="alert"
-              className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800"
+              className="rounded-md border border-claret/30 bg-claret-soft p-3 text-sm text-claret"
             >
               {addBookError}
             </p>
