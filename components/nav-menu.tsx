@@ -59,7 +59,7 @@ function TriggerButton({
 }
 
 const TRIGGER_CLASS = (active: boolean) =>
-  `inline-block whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition-transform transition-colors duration-150 hover:scale-110 ${
+  `inline-block whitespace-nowrap rounded-md border-b-2 px-3 py-3 text-sm font-medium transition-transform transition-colors duration-150 hover:scale-125 hover:shadow-sm ${
     active ? "border-accent text-ink" : "border-transparent text-ink/60 hover:text-ink"
   }`;
 
@@ -102,7 +102,7 @@ export function NavMenu({
               href={item.href}
               role="menuitem"
               onClick={() => setOpen(false)}
-              className="block px-4 py-2 text-sm text-ink hover:bg-ink/5"
+              className="block scale-100 px-4 py-2 text-sm text-ink transition-transform duration-150 hover:scale-105 hover:bg-ink/5"
             >
               {item.label}
             </Link>
@@ -150,7 +150,7 @@ export function NavPreviewMenu({
             href={ctaHref}
             role="menuitem"
             onClick={() => setOpen(false)}
-            className="mt-3 inline-block text-sm font-medium text-accent underline-offset-2 hover:underline"
+            className="mt-3 inline-block text-sm font-medium text-accent underline-offset-2 transition-transform duration-150 hover:scale-105 hover:underline"
           >
             {ctaLabel} →
           </Link>

@@ -35,7 +35,7 @@ export function SupportTabs({ events, eventsError }: { events: EventRow[]; event
             role="tab"
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition-transform transition-colors duration-150 hover:scale-110 ${
+            className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition-transform transition-colors duration-150 hover:scale-125 ${
               activeTab === tab.key
                 ? "border-accent text-ink"
                 : "border-transparent text-ink/60 hover:text-ink"

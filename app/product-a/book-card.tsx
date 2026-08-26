@@ -81,7 +81,7 @@ export function BookCard(book: BookCardProps) {
       role="button"
       tabIndex={0}
       aria-label={`View details for ${book.book_title}`}
-      className="flex cursor-pointer flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface transition hover:-translate-y-0.5 hover:shadow-md"
+      className="flex cursor-pointer flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface transition duration-150 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-lg"
     >
       <CardImage src={book.cover_url} alt="" aspect="portrait" emptyLabel="No cover available" />
       <div className="flex flex-1 flex-col gap-2 p-4">

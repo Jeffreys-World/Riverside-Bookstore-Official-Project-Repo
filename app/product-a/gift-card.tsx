@@ -47,7 +47,7 @@ export function GiftCard(item: GiftCardProps) {
       role="button"
       tabIndex={0}
       aria-label={`View details for ${item.item_name}`}
-      className="flex cursor-pointer flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface transition hover:-translate-y-0.5 hover:shadow-md"
+      className="flex cursor-pointer flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface transition duration-150 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-lg"
     >
       <CardImage src={item.image_url} alt="" aspect="square" />
       <div className="flex flex-1 flex-col gap-2 p-4">
