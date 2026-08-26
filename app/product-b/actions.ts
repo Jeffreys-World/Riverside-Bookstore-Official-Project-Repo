@@ -27,10 +27,14 @@ export async function signOutAction() {
 export async function addBookAction(formData: FormData) {
   const rawStock = String(formData.get("stock_quantity") ?? "").trim();
   const rawPrice = String(formData.get("price") ?? "").trim();
+  const rawDescription = String(formData.get("description") ?? "").trim();
+  const rawCoverUrl = String(formData.get("cover_url") ?? "").trim();
   const parsed = addBookRequestSchema.safeParse({
     isbn: String(formData.get("isbn") ?? "").trim(),
     book_title: String(formData.get("book_title") ?? ""),
     author_name: String(formData.get("author_name") ?? ""),
+    description: rawDescription === "" ? null : rawDescription,
+    cover_url: rawCoverUrl === "" ? null : rawCoverUrl,
     stock_quantity: rawStock === "" ? null : Number(rawStock),
     price: Number(rawPrice),
   });
@@ -41,32 +45,37 @@ export async function addBookAction(formData: FormData) {
     );
   }
 
-  const { isbn, book_title, author_name, stock_quantity, price } = parsed.data;
+  const { isbn, book_title, author_name, description, cover_url, stock_quantity, price } = parsed.data;
   const supabase = getServerClient();
   const { error } = await supabase
     .from("books")
-    .insert({ isbn, book_title, author_name, stock_quantity, price });
+    .insert({ isbn, book_title, author_name, description, cover_url, stock_quantity, price });
 
   if (error) {
     redirect(`/product-b?addBookError=${encodeURIComponent(error.message)}`);
   }
 
-  // Best-effort: populate cover_url/description from Google Books. A
-  // failure here must not undo the insert above — null cover/description
-  // is already a valid, already-rendered state (see
-  // 0005_add_book_metadata.sql), same as a book that's never been
-  // backfilled.
-  try {
-    const metadata = await fetchBookMetadata(isbn);
-    if (metadata) {
-      await supabase
-        .from("books")
-        .update({ cover_url: metadata.coverUrl, description: metadata.description })
-        .eq("isbn", isbn);
+  // Only auto-fetch from Google Books if staff didn't provide either
+  // field manually — a manual description/cover is an explicit override
+  // (e.g. the ISBN doesn't resolve on Google Books, or resolves to the
+  // wrong title — see TODOS.md's 2026-08-26 asset-fix entry for exactly
+  // that happening to 3 of the original 6 seed books), so auto-lookup
+  // must not silently clobber it. Best-effort either way: a failure here
+  // must not undo the insert above — null cover/description is already a
+  // valid, already-rendered state (see 0005_add_book_metadata.sql).
+  if (description === null && cover_url === null) {
+    try {
+      const metadata = await fetchBookMetadata(isbn);
+      if (metadata) {
+        await supabase
+          .from("books")
+          .update({ cover_url: metadata.coverUrl, description: metadata.description })
+          .eq("isbn", isbn);
+      }
+    } catch {
+      // Swallow — the book is already added; metadata can be backfilled
+      // later via scripts/backfill-book-covers.mjs.
     }
-  } catch {
-    // Swallow — the book is already added; metadata can be backfilled
-    // later via scripts/backfill-book-covers.mjs.
   }
 
   redirect(`/product-b?bookAdded=${encodeURIComponent(book_title)}`);

@@ -216,10 +216,17 @@ export type CheckoutRequest = z.infer<typeof checkoutRequestSchema>;
 // to 0 here.
 export const priceSchema = z.number().nonnegative();
 
+// description/cover_url are optional, staff-entered overrides — left
+// blank, addBookAction falls back to its existing Google Books
+// auto-lookup by ISBN. Given manually, that lookup is skipped entirely:
+// this is the escape hatch for a title Google Books doesn't have, or
+// (see TODOS.md's 2026-08-26 asset-fix entry) has under the wrong ISBN.
 export const addBookRequestSchema = z.object({
   isbn: z.string().regex(ISBN13_REGEX),
   book_title: z.string().trim().min(1),
   author_name: z.string().trim().min(1),
+  description: z.string().trim().min(1).nullable(),
+  cover_url: z.string().trim().url().nullable(),
   stock_quantity: stockQuantitySchema,
   price: priceSchema,
 });
