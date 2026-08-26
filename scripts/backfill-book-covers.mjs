@@ -30,22 +30,39 @@ function loadEnvLocal() {
   }
 }
 
+const MAX_ATTEMPTS = 3;
+
+// Retries transient errors (429/5xx — Google Books' backend returns
+// occasional 503s even on a valid key) instead of treating them as "no
+// match," which would silently drop data. 404 means "no such volume" and
+// is not retried.
 async function fetchBookMetadata(isbn, apiKey) {
   const params = new URLSearchParams({ q: `isbn:${isbn}` });
   if (apiKey) params.set("key", apiKey);
 
-  const res = await fetch(`https://www.googleapis.com/books/v1/volumes?${params}`);
-  if (!res.ok) return null;
+  let lastStatus = null;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?${params}`);
+    if (res.ok) {
+      const data = await res.json();
+      const volumeInfo = data?.items?.[0]?.volumeInfo;
+      if (!volumeInfo) return null;
 
-  const data = await res.json();
-  const volumeInfo = data?.items?.[0]?.volumeInfo;
-  if (!volumeInfo) return null;
+      const rawThumbnail = volumeInfo.imageLinks?.thumbnail ?? volumeInfo.imageLinks?.smallThumbnail;
+      return {
+        coverUrl: rawThumbnail ? rawThumbnail.replace(/^http:/, "https:") : null,
+        description: volumeInfo.description ?? null,
+      };
+    }
 
-  const rawThumbnail = volumeInfo.imageLinks?.thumbnail ?? volumeInfo.imageLinks?.smallThumbnail;
-  return {
-    coverUrl: rawThumbnail ? rawThumbnail.replace(/^http:/, "https:") : null,
-    description: volumeInfo.description ?? null,
-  };
+    lastStatus = res.status;
+    if (res.status === 404) return null;
+    if (attempt < MAX_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+    }
+  }
+
+  throw new Error(`Google Books request failed after ${MAX_ATTEMPTS} attempts (last status ${lastStatus})`);
 }
 
 async function main() {
@@ -78,7 +95,13 @@ async function main() {
   }
 
   for (const book of books) {
-    const metadata = await fetchBookMetadata(book.isbn, googleApiKey);
+    let metadata;
+    try {
+      metadata = await fetchBookMetadata(book.isbn, googleApiKey);
+    } catch (err) {
+      console.warn(`  ✗ ${book.book_title} (${book.isbn}): ${err.message}`);
+      continue;
+    }
     if (!metadata) {
       console.warn(`  ✗ ${book.book_title} (${book.isbn}): no Google Books match`);
       continue;
