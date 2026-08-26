@@ -70,13 +70,13 @@ export function SiteNav() {
         type="button"
         onClick={toggle}
         aria-label={`Open cart, ${count} item${count === 1 ? "" : "s"}`}
-        className="relative flex min-h-[48px] min-w-[48px] flex-none items-center justify-center rounded-md text-ink/70 transition-transform duration-150 hover:scale-125 hover:bg-field hover:text-ink"
+        className="relative flex min-h-[48px] min-w-[48px] flex-none items-center justify-center rounded-full border border-accent/30 bg-accent-soft text-ink transition-transform duration-150 hover:scale-125 hover:border-accent hover:bg-accent hover:text-paper"
       >
-        <span aria-hidden className="text-xl">
+        <span aria-hidden className="text-2xl">
           🛒
         </span>
         {count > 0 && (
-          <span className="absolute right-0.5 top-0.5 min-w-[1.1rem] rounded-full bg-accent px-1 py-0.5 text-center font-mono text-[10px] font-semibold leading-none text-paper">
+          <span className="absolute -right-1 -top-1 min-w-[1.25rem] rounded-full border-2 border-surface bg-claret px-1 py-0.5 text-center font-mono text-[11px] font-bold leading-none text-paper">
             {count}
           </span>
         )}
