@@ -63,3 +63,20 @@ export function sortBySeverity(
     (a, b) => SEVERITY_ORDER[a.status] - SEVERITY_ORDER[b.status]
   );
 }
+
+/**
+ * Catalog fulfillment badge. There's no publication/release-date column in
+ * the schema (CLAUDE.md's data contract doesn't list one) — "Pre-Order"
+ * here means "not currently on the shelf, order it in and we'll fulfill it
+ * when restocked," reusing the same stock-status signal rather than
+ * inventing a new field. "Reserve" means it's on the shelf now and this
+ * pre-order is holding a copy for pickup.
+ */
+export function fulfillmentBadgeFor(
+  status: StockStatus
+): { label: string; tone: "positive" | "pending" } {
+  if (status === "in_stock" || status === "low_stock") {
+    return { label: "Reserve", tone: "positive" };
+  }
+  return { label: "Pre-Order", tone: "pending" };
+}

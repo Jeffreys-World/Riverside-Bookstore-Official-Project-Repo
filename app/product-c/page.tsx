@@ -34,17 +34,17 @@ export default async function ProductCPage() {
           three are the actual repeat-question culprits, so they're always
           visible here — not hidden behind having to ask the chatbot. */}
       <section className="mt-8 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-ink/10 bg-white p-4">
+        <div className="rounded-lg border border-ink/10 bg-surface p-4">
           <h2 className="font-serif text-lg text-ink">Store hours</h2>
           <p className="mt-1 whitespace-pre-line text-sm text-ink/70">{STORE_HOURS}</p>
         </div>
-        <div className="rounded-lg border border-ink/10 bg-white p-4">
+        <div className="rounded-lg border border-ink/10 bg-surface p-4">
           <h2 className="font-serif text-lg text-ink">Policies</h2>
           <p className="mt-1 whitespace-pre-line text-sm text-ink/70">{STORE_POLICIES}</p>
         </div>
       </section>
 
-      <section className="mt-4 rounded-lg border border-ink/10 bg-white p-4">
+      <section className="mt-4 rounded-lg border border-ink/10 bg-surface p-4">
         <h2 className="font-serif text-lg text-ink">Upcoming events</h2>
         {events && events.length > 0 ? (
           <ul className="mt-2 space-y-3">

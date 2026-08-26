@@ -35,7 +35,7 @@ export function ChatWidget() {
         {history.map((ex, i) => (
           <div key={i} className="space-y-1">
             <p className="font-medium text-ink">{ex.question}</p>
-            <p className="rounded-lg border border-ink/10 bg-white p-3 text-ink/80">
+            <p className="rounded-lg border border-ink/10 bg-surface p-3 text-ink/80">
               {ex.answer}
             </p>
             {ex.books.length > 0 && (
@@ -82,7 +82,7 @@ export function ChatWidget() {
         <button
           type="submit"
           disabled={pending || !question.trim()}
-          className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper disabled:cursor-not-allowed disabled:opacity-50"
         >
           Ask
         </button>

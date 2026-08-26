@@ -144,28 +144,28 @@ export function ContentForm({ books, events }: { books: BookRow[]; events: Event
       <button
         type="submit"
         disabled={pending || (!note.trim() && !selectedBook && !selectedEvent)}
-        className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+        className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper disabled:cursor-not-allowed disabled:opacity-50"
       >
         {pending ? "Generating…" : "Generate content"}
       </button>
 
       <div role="status" aria-live="polite" className="space-y-4">
         {result?.kind === "error" && (
-          <p className="rounded-md border border-red-300 bg-red-50 p-3 text-red-800">
+          <p className="rounded-md border border-claret/30 bg-claret-soft p-3 text-claret">
             {result.message}
           </p>
         )}
         {result?.kind === "success" && (
           <>
-            <div className="rounded-lg border border-ink/10 bg-white p-4">
+            <div className="rounded-lg border border-ink/10 bg-surface p-4">
               <h3 className="font-serif text-lg text-ink">Instagram</h3>
               <p className="mt-1 whitespace-pre-wrap text-ink/80">{result.content.instagram}</p>
             </div>
-            <div className="rounded-lg border border-ink/10 bg-white p-4">
+            <div className="rounded-lg border border-ink/10 bg-surface p-4">
               <h3 className="font-serif text-lg text-ink">Newsletter</h3>
               <p className="mt-1 whitespace-pre-wrap text-ink/80">{result.content.newsletter}</p>
             </div>
-            <div className="rounded-lg border border-ink/10 bg-white p-4">
+            <div className="rounded-lg border border-ink/10 bg-surface p-4">
               <h3 className="font-serif text-lg text-ink">Staff pick card</h3>
               <p className="mt-1 font-mono text-ink/80">{result.content.staffPickCard}</p>
             </div>
