@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Source_Serif_4 } from "next/font/google";
+import { SiteNav } from "./site-nav";
 import "./globals.css";
 
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
@@ -17,7 +18,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${sans.variable} ${serif.variable}`}>
-      <body className="bg-paper font-sans text-ink">{children}</body>
+      <body className="bg-paper font-sans text-ink">
+        <SiteNav />
+        {children}
+      </body>
     </html>
   );
 }
