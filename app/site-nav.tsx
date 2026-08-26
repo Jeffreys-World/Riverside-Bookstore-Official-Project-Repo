@@ -104,8 +104,14 @@ export function SiteNav() {
         </nav>
       </div>
 
-      <nav className="mx-auto hidden max-w-5xl grid-cols-[1fr_auto_1fr] items-center gap-2 px-6 py-3 sm:grid">
-        <div className="flex items-center gap-1 justify-self-start">{shopLinks}</div>
+      {/* Both side columns are 1fr (equal width) and stretch full-width,
+          then spread their own items with justify-between — the outermost
+          item lands at the page edge (px-6) and the innermost item lands
+          right against the title, so the gap to the title is the same
+          fixed grid `gap` on both sides no matter how many items are in
+          each cluster, and there's no dead space at either edge. */}
+      <nav className="mx-auto hidden max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-6 px-6 py-3 sm:grid">
+        <div className="flex items-center justify-between gap-4 justify-self-stretch">{shopLinks}</div>
 
         <Link
           href="/product-a"
@@ -114,7 +120,7 @@ export function SiteNav() {
           Riverside Books
         </Link>
 
-        <div className="flex items-center gap-1 justify-self-end">{utilityLinks}</div>
+        <div className="flex items-center justify-between gap-4 justify-self-stretch">{utilityLinks}</div>
       </nav>
     </header>
   );

@@ -33,7 +33,7 @@ export default async function ProductDPage() {
   ]);
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16">
+    <main className="mx-auto max-w-7xl px-6 py-16">
       <StaffNav active="marketing" />
       <h1 className="font-serif text-3xl text-ink">Marketing Content Generator</h1>
       <p className="mt-2 text-ink/70">

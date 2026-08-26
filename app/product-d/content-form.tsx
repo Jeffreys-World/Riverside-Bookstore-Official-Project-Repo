@@ -59,87 +59,89 @@ export function ContentForm({ books, events }: { books: BookRow[]; events: Event
 
   return (
     <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-      <div>
-        <label htmlFor="isbn" className="block text-sm font-medium text-ink">
-          Title (optional)
-        </label>
-        <select
-          id="isbn"
-          value={isbn}
-          onChange={(e) => setIsbn(e.target.value)}
-          className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-        >
-          <option value="">— None, just use my note —</option>
-          {books.map((b) => (
-            <option key={b.isbn} value={b.isbn}>
-              {b.book_title} — {b.author_name}
-            </option>
-          ))}
-        </select>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div>
+          <label htmlFor="isbn" className="block text-sm font-medium text-ink">
+            Title (optional)
+          </label>
+          <select
+            id="isbn"
+            value={isbn}
+            onChange={(e) => setIsbn(e.target.value)}
+            className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+          >
+            <option value="">— None, just use my note —</option>
+            {books.map((b) => (
+              <option key={b.isbn} value={b.isbn}>
+                {b.book_title} — {b.author_name}
+              </option>
+            ))}
+          </select>
 
-        {selectedBook && (
-          <div className="mt-3 flex items-center gap-3">
-            {selectedBook.cover_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={selectedBook.cover_url}
-                alt=""
-                loading="lazy"
-                className="h-20 w-14 flex-none rounded object-cover"
-              />
-            ) : (
-              <div
-                aria-hidden
-                className="flex h-20 w-14 flex-none items-center justify-center rounded bg-ink/5 text-[10px] text-ink/40"
-              >
-                No cover
+          {selectedBook && (
+            <div className="mt-3 flex items-center gap-3">
+              {selectedBook.cover_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={selectedBook.cover_url}
+                  alt=""
+                  loading="lazy"
+                  className="h-20 w-14 flex-none rounded object-cover"
+                />
+              ) : (
+                <div
+                  aria-hidden
+                  className="flex h-20 w-14 flex-none items-center justify-center rounded bg-ink/5 text-[10px] text-ink/40"
+                >
+                  No cover
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="truncate font-medium text-ink">{selectedBook.book_title}</p>
+                <p className="truncate text-sm text-ink/60">{selectedBook.author_name}</p>
               </div>
-            )}
-            <div className="min-w-0">
-              <p className="truncate font-medium text-ink">{selectedBook.book_title}</p>
-              <p className="truncate text-sm text-ink/60">{selectedBook.author_name}</p>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
-      <div>
-        <label htmlFor="event_id" className="block text-sm font-medium text-ink">
-          Upcoming event (optional)
-        </label>
-        <select
-          id="event_id"
-          value={eventId}
-          onChange={(e) => setEventId(e.target.value)}
-          className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-        >
-          <option value="">— None —</option>
-          {events.map((ev) => (
-            <option key={ev.id} value={ev.id}>
-              {ev.event_title} — {formatEventTimestamp(ev.author_event_at)}
-            </option>
-          ))}
-        </select>
-        {events.length === 0 && (
-          <p className="mt-1 text-xs text-ink/50">No upcoming events on the calendar right now.</p>
-        )}
-        {selectedEvent && (
-          <p className="mt-2 text-sm text-ink/60">{selectedEvent.event_description}</p>
-        )}
-      </div>
+        <div>
+          <label htmlFor="event_id" className="block text-sm font-medium text-ink">
+            Upcoming event (optional)
+          </label>
+          <select
+            id="event_id"
+            value={eventId}
+            onChange={(e) => setEventId(e.target.value)}
+            className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+          >
+            <option value="">— None —</option>
+            {events.map((ev) => (
+              <option key={ev.id} value={ev.id}>
+                {ev.event_title} — {formatEventTimestamp(ev.author_event_at)}
+              </option>
+            ))}
+          </select>
+          {events.length === 0 && (
+            <p className="mt-1 text-xs text-ink/50">No upcoming events on the calendar right now.</p>
+          )}
+          {selectedEvent && (
+            <p className="mt-2 text-sm text-ink/60">{selectedEvent.event_description}</p>
+          )}
+        </div>
 
-      <div>
-        <label htmlFor="note" className="block text-sm font-medium text-ink">
-          Anything else to add? {selectedBook || selectedEvent ? "(optional)" : ""}
-        </label>
-        <textarea
-          id="note"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          rows={4}
-          placeholder="e.g. staff pick this week, perfect cozy autumn read"
-          className="mt-1 block w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-        />
+        <div>
+          <label htmlFor="note" className="block text-sm font-medium text-ink">
+            Anything else to add? {selectedBook || selectedEvent ? "(optional)" : ""}
+          </label>
+          <textarea
+            id="note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={4}
+            placeholder="e.g. staff pick this week, perfect cozy autumn read"
+            className="mt-1 block w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+          />
+        </div>
       </div>
 
       <button
@@ -150,14 +152,14 @@ export function ContentForm({ books, events }: { books: BookRow[]; events: Event
         {pending ? "Generating…" : "Generate content"}
       </button>
 
-      <div role="status" aria-live="polite" className="space-y-4">
+      <div role="status" aria-live="polite">
         {result?.kind === "error" && (
           <p className="rounded-md border border-claret/30 bg-claret-soft p-3 text-claret">
             {result.message}
           </p>
         )}
         {result?.kind === "success" && (
-          <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-lg border border-ink/10 bg-surface p-4">
               <h3 className="font-serif text-lg text-ink">Instagram</h3>
               <p className="mt-1 whitespace-pre-wrap text-ink/80">{result.content.instagram}</p>
@@ -180,7 +182,7 @@ export function ContentForm({ books, events }: { books: BookRow[]; events: Event
                     : ""
               }
             />
-          </>
+          </div>
         )}
       </div>
     </form>
