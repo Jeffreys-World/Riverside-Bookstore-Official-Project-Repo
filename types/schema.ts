@@ -50,7 +50,11 @@ export const ISBN13_REGEX = /^(97[89])-?\d{1,5}-?\d{1,7}-?\d{1,7}-?\d$/;
 
 export type StockQuantity = number | null;
 
-export const stockQuantitySchema = z.number().int().nonnegative().nullable();
+export const stockQuantitySchema = z
+  .number({ invalid_type_error: "Stock quantity must be a whole number." })
+  .int("Stock quantity must be a whole number.")
+  .nonnegative("Stock quantity can't be negative.")
+  .nullable();
 
 // ---------------------------------------------------------------------------
 // Core row types
@@ -259,7 +263,9 @@ export type CheckoutRequest = z.infer<typeof checkoutRequestSchema>;
 // on purpose: leaving it blank stores null ("not yet inventoried"), the
 // same valid state books can already be in — never coerce a blank field
 // to 0 here.
-export const priceSchema = z.number().nonnegative();
+export const priceSchema = z
+  .number({ invalid_type_error: "Price must be a number." })
+  .nonnegative("Price can't be negative.");
 
 // description/cover_url are optional, staff-entered overrides — left
 // blank, addBookAction falls back to its existing Google Books
@@ -267,14 +273,14 @@ export const priceSchema = z.number().nonnegative();
 // this is the escape hatch for a title Google Books doesn't have, or
 // (see TODOS.md's 2026-08-26 asset-fix entry) has under the wrong ISBN.
 export const addBookRequestSchema = z.object({
-  isbn: z.string().regex(ISBN13_REGEX),
-  book_title: z.string().trim().min(1),
-  author_name: z.string().trim().min(1),
-  description: z.string().trim().min(1).nullable(),
-  cover_url: z.string().trim().url().nullable(),
+  isbn: z.string().regex(ISBN13_REGEX, "ISBN must be a valid 13-digit ISBN starting with 978 or 979."),
+  book_title: z.string().trim().min(1, "Title is required."),
+  author_name: z.string().trim().min(1, "Author is required."),
+  description: z.string().trim().min(1, "Description can't be blank — leave the field empty instead.").nullable(),
+  cover_url: z.string().trim().url("Cover asset URL must be a valid URL.").nullable(),
   // Staff-only, no Google Books equivalent to auto-fetch from (unlike
   // description/cover_url) — always either what staff typed, or null.
-  author_bio: z.string().trim().min(1).nullable(),
+  author_bio: z.string().trim().min(1, "Author bio can't be blank — leave the field empty instead.").nullable(),
   stock_quantity: stockQuantitySchema,
   price: priceSchema,
 });
@@ -286,13 +292,13 @@ export type AddBookRequest = z.infer<typeof addBookRequestSchema>;
 // key (0009_merchandise.sql), so a duplicate name fails atomically the
 // same way a duplicate ISBN does for books.
 export const addMerchandiseRequestSchema = z.object({
-  item_name: z.string().trim().min(1),
+  item_name: z.string().trim().min(1, "Item name is required."),
   category: merchandiseCategorySchema,
   stock_quantity: stockQuantitySchema,
   price: priceSchema,
   // Optional, staff-entered — no auto-lookup source for generic
   // merchandise the way Google Books/Open Library exist for ISBNs.
-  image_url: z.string().trim().url().nullable(),
+  image_url: z.string().trim().url("Image URL must be a valid URL.").nullable(),
 });
 export type AddMerchandiseRequest = z.infer<typeof addMerchandiseRequestSchema>;
 
