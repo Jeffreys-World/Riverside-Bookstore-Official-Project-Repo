@@ -90,6 +90,7 @@ export interface Merchandise {
   category: MerchandiseCategory;
   price: number; // >= 0
   stock_quantity: StockQuantity; // null = not yet inventoried, NEVER coerce to 0
+  image_url: string | null; // 0025_merchandise_image_url.sql — staff-entered, no auto-lookup source
 }
 
 export interface AuthorEvent {
@@ -247,6 +248,9 @@ export const addMerchandiseRequestSchema = z.object({
   category: merchandiseCategorySchema,
   stock_quantity: stockQuantitySchema,
   price: priceSchema,
+  // Optional, staff-entered — no auto-lookup source for generic
+  // merchandise the way Google Books/Open Library exist for ISBNs.
+  image_url: z.string().trim().url().nullable(),
 });
 export type AddMerchandiseRequest = z.infer<typeof addMerchandiseRequestSchema>;
 

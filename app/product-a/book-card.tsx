@@ -4,6 +4,7 @@ import { useState, type MouseEvent } from "react";
 import { useCart } from "@/components/cart-provider";
 import { useProductDrawer } from "@/components/product-drawer-provider";
 import { StampBadge } from "@/components/stamp-badge";
+import { CardImage } from "@/components/card-image";
 import { fulfillmentBadgeFor } from "@/lib/inventory";
 import type { StockStatus } from "@/types/schema";
 
@@ -82,21 +83,7 @@ export function BookCard(book: BookCardProps) {
       aria-label={`View details for ${book.book_title}`}
       className="flex cursor-pointer flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface transition hover:-translate-y-0.5 hover:shadow-md"
     >
-      <div className="aspect-[2/3] w-full bg-ink/5">
-        {book.cover_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={book.cover_url}
-            alt=""
-            loading="lazy"
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs text-ink/40">
-            No cover available
-          </div>
-        )}
-      </div>
+      <CardImage src={book.cover_url} alt="" aspect="portrait" emptyLabel="No cover available" />
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-serif text-lg leading-snug text-ink">{book.book_title}</h3>

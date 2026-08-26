@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useProductDrawer } from "./product-drawer-provider";
 import { useCart } from "./cart-provider";
 import { StampBadge, type StampTone } from "./stamp-badge";
+import { CardImage } from "./card-image";
 import { fulfillmentBadgeFor } from "@/lib/inventory";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -76,19 +77,13 @@ export function ProductDrawer() {
 
         {product && (
           <div className="flex-1 px-6 pb-8">
-            <div className="mx-auto w-40 sm:w-48">
-              {product.kind === "book" && product.coverUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={product.coverUrl}
-                  alt=""
-                  className="aspect-[2/3] w-full rounded object-cover shadow-md"
-                />
-              ) : (
-                <div className="flex aspect-[2/3] w-full items-center justify-center rounded bg-surface text-xs text-ink/40">
-                  No cover available
-                </div>
-              )}
+            <div className="mx-auto w-40 overflow-hidden rounded shadow-md sm:w-48">
+              <CardImage
+                src={product.kind === "book" ? product.coverUrl : product.imageUrl}
+                alt=""
+                aspect={product.kind === "book" ? "portrait" : "square"}
+                emptyLabel={product.kind === "book" ? "No cover available" : "No image available"}
+              />
             </div>
 
             <h2 className="mt-6 font-serif text-2xl text-ink">{product.title}</h2>

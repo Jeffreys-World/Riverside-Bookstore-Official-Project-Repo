@@ -11,6 +11,7 @@ import { useRealtimeSubscription } from "@/lib/realtime";
 import { addBookAction, addMerchandiseAction, searchBooksAction } from "./actions";
 import { StaffNav } from "./staff-nav";
 import { StampBadge, type StampTone } from "@/components/stamp-badge";
+import { CardImage } from "@/components/card-image";
 import type { BookSearchCandidate } from "@/lib/google-books";
 
 interface OrderRow {
@@ -37,6 +38,7 @@ interface MerchandiseRow {
   category: string;
   price: number;
   stock_quantity: number | null;
+  image_url: string | null;
 }
 
 const STATUS_LABEL: Record<FlaggedInventoryRecord["status"], string> = {
@@ -290,47 +292,28 @@ export function Dashboard({
               No titles in the catalog yet.
             </p>
           ) : (
-            <ul className="space-y-2">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {flaggedBooks.map((f) => (
-                <li
+                <article
                   key={f.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-ink/10 bg-surface p-4"
+                  className="flex flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface"
                 >
-                  <span className="flex min-w-0 items-center gap-3">
-                    {booksByIsbn[f.id]?.cover_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={booksByIsbn[f.id]?.cover_url ?? undefined}
-                        alt=""
-                        loading="lazy"
-                        className="h-14 w-10 flex-none rounded object-cover"
-                      />
-                    ) : (
-                      <div
-                        aria-hidden
-                        className="flex h-14 w-10 flex-none items-center justify-center rounded bg-ink/5 text-[9px] text-ink/40"
-                      >
-                        No cover
-                      </div>
-                    )}
-                    <span className="truncate text-ink">
-                      {booksByIsbn[f.id]?.book_title ?? f.id}
-                    </span>
-                  </span>
-                  <span className="flex flex-none items-center gap-3">
-                    {booksByIsbn[f.id]?.price !== undefined && (
-                      <span className="font-mono text-sm text-ink/50">
-                        {currencyFormatter.format(booksByIsbn[f.id]?.price ?? 0)}
-                      </span>
-                    )}
-                    <span className="font-mono text-sm text-ink/60">
-                      {f.stockQuantity ?? "—"}
-                    </span>
+                  <CardImage src={booksByIsbn[f.id]?.cover_url ?? null} alt="" aspect="portrait" />
+                  <div className="flex flex-1 flex-col gap-2 p-4">
+                    <p className="truncate text-ink">{booksByIsbn[f.id]?.book_title ?? f.id}</p>
+                    <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+                      {booksByIsbn[f.id]?.price !== undefined && (
+                        <span className="font-mono text-sm text-ink/50">
+                          {currencyFormatter.format(booksByIsbn[f.id]?.price ?? 0)}
+                        </span>
+                      )}
+                      <span className="font-mono text-sm text-ink/60">{f.stockQuantity ?? "—"}</span>
+                    </div>
                     <StampBadge tone={STATUS_TONE[f.status]}>{STATUS_LABEL[f.status]}</StampBadge>
-                  </span>
-                </li>
+                  </div>
+                </article>
               ))}
-            </ul>
+            </div>
           )}
         </section>
       )}
@@ -342,34 +325,31 @@ export function Dashboard({
               No cards or gifts in the catalog yet.
             </p>
           ) : (
-            <ul className="space-y-2">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
               {flaggedMerchandise.map((f) => (
-                <li
+                <article
                   key={f.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-ink/10 bg-surface p-4"
+                  className="flex flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface"
                 >
-                  <span className="min-w-0">
-                    <span className="truncate text-ink">{merchandiseById[f.id]?.item_name ?? f.id}</span>
+                  <CardImage src={merchandiseById[f.id]?.image_url ?? null} alt="" aspect="square" />
+                  <div className="flex flex-1 flex-col gap-2 p-4">
+                    <p className="truncate text-ink">{merchandiseById[f.id]?.item_name ?? f.id}</p>
                     {merchandiseById[f.id]?.category !== undefined && (
-                      <span className="ml-2 text-xs capitalize text-ink/50">
-                        {merchandiseById[f.id]?.category}
-                      </span>
+                      <p className="text-xs capitalize text-ink/50">{merchandiseById[f.id]?.category}</p>
                     )}
-                  </span>
-                  <span className="flex flex-none items-center gap-3">
-                    {merchandiseById[f.id]?.price !== undefined && (
-                      <span className="font-mono text-sm text-ink/50">
-                        {currencyFormatter.format(merchandiseById[f.id]?.price ?? 0)}
-                      </span>
-                    )}
-                    <span className="font-mono text-sm text-ink/60">
-                      {f.stockQuantity ?? "—"}
-                    </span>
+                    <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+                      {merchandiseById[f.id]?.price !== undefined && (
+                        <span className="font-mono text-sm text-ink/50">
+                          {currencyFormatter.format(merchandiseById[f.id]?.price ?? 0)}
+                        </span>
+                      )}
+                      <span className="font-mono text-sm text-ink/60">{f.stockQuantity ?? "—"}</span>
+                    </div>
                     <StampBadge tone={STATUS_TONE[f.status]}>{STATUS_LABEL[f.status]}</StampBadge>
-                  </span>
-                </li>
+                  </div>
+                </article>
               ))}
-            </ul>
+            </div>
           )}
         </section>
       )}
@@ -661,6 +641,18 @@ export function Dashboard({
                 step={0.01}
                 required
                 placeholder="0.00"
+                className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
+              />
+            </div>
+            <div>
+              <label htmlFor="merch_image_url" className="block text-sm font-medium text-ink">
+                Image URL <span className="font-normal text-ink/50">(optional)</span>
+              </label>
+              <input
+                id="merch_image_url"
+                name="image_url"
+                type="url"
+                placeholder="No auto-fetch source for merchandise — paste a product photo URL, or leave blank"
                 className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-white px-3 py-2 text-ink"
               />
             </div>

@@ -99,11 +99,13 @@ export async function addBookAction(formData: FormData) {
 export async function addMerchandiseAction(formData: FormData) {
   const rawStock = String(formData.get("stock_quantity") ?? "").trim();
   const rawPrice = String(formData.get("price") ?? "").trim();
+  const rawImageUrl = String(formData.get("image_url") ?? "").trim();
   const parsed = addMerchandiseRequestSchema.safeParse({
     item_name: String(formData.get("item_name") ?? ""),
     category: String(formData.get("category") ?? ""),
     stock_quantity: rawStock === "" ? null : Number(rawStock),
     price: Number(rawPrice),
+    image_url: rawImageUrl === "" ? null : rawImageUrl,
   });
 
   if (!parsed.success) {
@@ -112,11 +114,11 @@ export async function addMerchandiseAction(formData: FormData) {
     );
   }
 
-  const { item_name, category, stock_quantity, price } = parsed.data;
+  const { item_name, category, stock_quantity, price, image_url } = parsed.data;
   const supabase = getServerClient();
   const { error } = await supabase
     .from("merchandise")
-    .insert({ item_name, category, stock_quantity, price });
+    .insert({ item_name, category, stock_quantity, price, image_url });
 
   if (error) {
     // item_name is the table's unique key (0009_merchandise.sql) — a

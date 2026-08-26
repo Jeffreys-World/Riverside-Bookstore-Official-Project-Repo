@@ -34,7 +34,7 @@ export default async function ProductAPage({
       .order("book_title"),
     supabase
       .from("merchandise")
-      .select("id, item_name, category, price, stock_quantity")
+      .select("id, item_name, category, price, stock_quantity, image_url")
       .order("item_name"),
   ]);
 
@@ -115,6 +115,7 @@ export default async function ProductAPage({
                 category={m.category}
                 price={m.price}
                 stockQuantity={m.stock_quantity}
+                image_url={m.image_url}
                 status={flaggedMerchandise.find((f) => f.id === m.id)?.status ?? "needs_attention"}
               />
             ))}

@@ -30,6 +30,7 @@ export type DetailProduct =
       price: number;
       status: StockStatus;
       stockQuantity: number | null;
+      imageUrl: string | null;
     };
 
 interface ProductDrawerContextValue {

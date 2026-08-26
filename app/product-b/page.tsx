@@ -47,7 +47,7 @@ export default async function ProductBPage({
     supabase
       .from("books")
       .select("isbn, book_title, author_name, stock_quantity, cover_url, price"),
-    supabase.from("merchandise").select("id, item_name, category, price, stock_quantity"),
+    supabase.from("merchandise").select("id, item_name, category, price, stock_quantity, image_url"),
   ]);
 
   // A failed query here must not silently render as "nothing pending" /
