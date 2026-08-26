@@ -35,7 +35,13 @@ ${STORE_POLICIES}
 
 Keep answers short and conversational. If a question is outside what you can
 check (stock, order status, events, hours, policies), say so plainly rather
-than making something up.`;
+than making something up.
+
+If a tool result includes "lookup_failed": true, that means the lookup
+itself failed — it is NOT the same as an empty result. Tell the customer
+you're having trouble checking that right now and suggest trying again
+shortly or asking a bookseller in person. Never say a title is out of
+stock, or that there are no upcoming events, because of a failed lookup.`;
 
 export interface SupportChatBook {
   isbn: string;
@@ -60,11 +66,16 @@ async function executeTool(
     const query = String(args.query ?? "").replace(/[,()]/g, "").trim();
     if (!query) return { matches: [] };
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("books")
       .select("isbn, book_title, author_name, stock_quantity, cover_url")
       .or(`isbn.eq.${query},book_title.ilike.%${query}%`)
       .limit(5);
+
+    if (error) {
+      console.error("Product C check_inventory query failed:", error);
+      return { matches: [], lookup_failed: true };
+    }
 
     const rows = data ?? [];
     const flagged = evaluateStockStatus(
@@ -93,12 +104,18 @@ async function executeTool(
   }
 
   if (name === "get_upcoming_events") {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("author_events")
       .select("event_title, event_description, author_event_at")
       .gte("author_event_at", new Date().toISOString())
       .order("author_event_at", { ascending: true })
       .limit(5);
+
+    if (error) {
+      console.error("Product C get_upcoming_events query failed:", error);
+      return { events: [], lookup_failed: true };
+    }
+
     return {
       events: (data ?? []).map((e) => ({
         title: e.event_title,
