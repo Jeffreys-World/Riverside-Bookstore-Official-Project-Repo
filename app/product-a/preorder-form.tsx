@@ -195,7 +195,9 @@ export function PreorderForm({ books }: { books: BookRow[] }) {
                     <p className="mt-1 text-xs text-ink/60">{STATUS_LABEL[status]}</p>
                   )}
                   {b.description && (
-                    <p className="mt-1 line-clamp-2 text-xs text-ink/50">{b.description}</p>
+                    <p aria-hidden className="mt-1 line-clamp-2 text-xs text-ink/50">
+                      {b.description}
+                    </p>
                   )}
                 </div>
               </label>
