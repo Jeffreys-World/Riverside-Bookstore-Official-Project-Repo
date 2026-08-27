@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { loadCustomerId, saveCustomerId } from "@/lib/customer-id-storage";
+import { clearCustomerId, loadCustomerId, saveCustomerId } from "@/lib/customer-id-storage";
 import {
   CUSTOMER_ID_REGEX,
   ORDER_STATUS_LABEL,
@@ -103,6 +104,20 @@ export function AccountView() {
     loadAccount(customerId);
   }
 
+  // "Log out" the customer-id-as-access-token: forget the saved id and
+  // drop back to the sign-in form. Mirrors the staff Sign out in
+  // app/product-b/staff-nav.tsx — there's no server session to end here,
+  // so this is purely local (localStorage + component state).
+  function handleLogOut() {
+    clearCustomerId();
+    activeIdRef.current = "";
+    setCustomerId("");
+    setResult(null);
+    setActiveTab("points");
+    setBlindDate(null);
+    setDonation(null);
+  }
+
   async function handleBlindDate() {
     if (blindDate?.kind === "pending") return;
     setBlindDate({ kind: "pending" });
@@ -127,29 +142,61 @@ export function AccountView() {
     }
   }
 
+  const signedIn = result?.kind === "success";
+
   return (
     <div className="mt-8">
       <div className="max-w-md">
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <label htmlFor="account_customer_id" className="sr-only">
-            Customer ID
-          </label>
-          <input
-            id="account_customer_id"
-            type="text"
-            placeholder="cust_XXXXX"
-            value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
-            className="min-h-[44px] flex-1 rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="min-h-[44px] flex-none rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
-          >
-            {loading ? "Loading…" : "View account"}
-          </button>
-        </form>
+        {signedIn ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-ink/10 bg-surface px-4 py-3">
+            <p className="text-sm text-ink/70">
+              Signed in as{" "}
+              <span className="font-mono text-ink">{activeIdRef.current}</span>
+            </p>
+            <button
+              type="button"
+              onClick={handleLogOut}
+              className="min-h-[36px] rounded-md border border-ink/20 px-4 py-1.5 text-sm font-medium text-ink transition-transform duration-150 hover:scale-105 hover:border-ink/40"
+            >
+              Log out
+            </button>
+          </div>
+        ) : (
+          <>
+            <form onSubmit={handleSubmit} className="flex gap-2">
+              <label htmlFor="account_customer_id" className="sr-only">
+                Customer ID
+              </label>
+              <input
+                id="account_customer_id"
+                type="text"
+                placeholder="cust_XXXXX"
+                value={customerId}
+                onChange={(e) => setCustomerId(e.target.value)}
+                className="min-h-[44px] flex-1 rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="min-h-[44px] flex-none rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+              >
+                {loading ? "Loading…" : "Sign in"}
+              </button>
+            </form>
+
+            <p className="mt-2 text-sm text-ink/60">
+              Your customer ID is your sign-in — use the one from your sign-up confirmation or a
+              past pre-order.{" "}
+              <Link
+                href="/product-a/signup"
+                className="text-accent underline-offset-2 hover:underline"
+              >
+                New customer? Create an account
+              </Link>
+              .
+            </p>
+          </>
+        )}
 
         <div role="status" aria-live="polite" className="mt-6">
           {result?.kind === "error" && (

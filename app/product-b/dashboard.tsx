@@ -76,11 +76,36 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 const ARRIVAL_HIGHLIGHT_MS = 2500;
 
 const TABS = [
-  { key: "pre-orders", label: "Pending Pre-Orders" },
-  { key: "stock", label: "Stock Levels" },
-  { key: "merch-stock", label: "Merchandise Stock" },
-  { key: "add-book", label: "Add a Book" },
-  { key: "add-merch", label: "Add Merchandise" },
+  {
+    key: "pre-orders",
+    label: "Pending Pre-Orders",
+    description:
+      "Live queue of pre-orders customers placed in the app. Each card shows the title, quantity, and customer ID — pull the book, set it aside, and the customer pays and collects it in person. New pre-orders appear here on their own, no refresh needed.",
+  },
+  {
+    key: "stock",
+    label: "Stock Levels",
+    description:
+      "Every catalog title, most urgent first: out of stock, then low, then not yet inventoried. Use Remove stock to fix a miscounted quantity; use Delete listing to pull a bad entry (duplicate, wrong price) off the site entirely.",
+  },
+  {
+    key: "merch-stock",
+    label: "Merchandise Stock",
+    description:
+      "The same stock view for cards and gifts. These are browse-only items — not part of the pre-order flow — so this is purely a shelf-count tool.",
+  },
+  {
+    key: "add-book",
+    label: "Add a Book",
+    description:
+      "Add a title to the catalog so customers can pre-order it. Search Google Books to prefill the details, or type them by hand — cover and description are fetched automatically on add unless you fill them in yourself.",
+  },
+  {
+    key: "add-merch",
+    label: "Add Merchandise",
+    description:
+      "Add a card or gift to the shelf listing. Browse-only stock — customers can see it but can't pre-order it.",
+  },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -378,6 +403,13 @@ export function Dashboard({
         ))}
       </div>
 
+      {/* One-line "what this tab is for" note, so staff (especially anyone
+          new) know how each section is meant to be used — e.g. that
+          Pending Pre-Orders is the live pickup queue, not a history log. */}
+      <p className="mt-4 max-w-3xl text-sm text-ink/60">
+        {TABS.find((tab) => tab.key === activeTab)?.description}
+      </p>
+
       {activeTab === "pre-orders" && (
         <section role="tabpanel" className="mt-8">
           {orders.length === 0 ? (
@@ -539,12 +571,6 @@ export function Dashboard({
 
       {activeTab === "add-book" && (
         <section role="tabpanel" className="mt-8">
-          <p className="text-sm text-ink/60">
-            Search Google Books to fill in the details below, or type everything by hand — cover
-            and description are looked up automatically once added, unless you fill them in
-            yourself.
-          </p>
-
           {bookAdded && (
             <p role="status" className="mt-4 rounded-md border border-accent/30 bg-accent-soft p-3 text-sm text-ink">
               Added &ldquo;{bookAdded}&rdquo; to the catalog.
@@ -759,10 +785,6 @@ export function Dashboard({
 
       {activeTab === "add-merch" && (
         <section role="tabpanel" className="mt-8">
-          <p className="text-sm text-ink/60">
-            Cards and gifts — browse-only, not part of the pre-order flow.
-          </p>
-
           {merchAdded && (
             <p role="status" className="mt-4 rounded-md border border-accent/30 bg-accent-soft p-3 text-sm text-ink">
               Added &ldquo;{merchAdded}&rdquo; to merchandise.
