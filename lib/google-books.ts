@@ -14,6 +14,29 @@ export interface BookMetadata {
   description: string | null;
 }
 
+/**
+ * Google Books' `imageLinks.thumbnail` is a fixed ~128px-wide image
+ * (`&zoom=1`), which looks soft on the catalog cards. The same
+ * `books.google.com/books/content` endpoint honours an undocumented-but-
+ * long-stable `&w=` param: `&w=800` yields up to ~800px for editions with
+ * a full preview and ~300px for catalog-only editions (never the "no
+ * preview" placeholder, which only `&zoom>=2` triggers). `&edge=curl` (a
+ * decorative page-curl) is dropped at the same time. Non-Google URLs
+ * (Open Library) pass through untouched. Also upgrades http -> https so
+ * the link isn't blocked as mixed content.
+ */
+export function upgradeCoverUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const url = raw.replace(/^http:/, "https:");
+  if (!url.includes("books.google.com/books/content")) return url;
+  if (/[?&]w=\d/.test(url)) return url; // already sized
+  const withoutCurl = url.replace(/&edge=curl/g, "");
+  const withZoom1 = /[?&]zoom=\d+/.test(withoutCurl)
+    ? withoutCurl.replace(/([?&]zoom=)\d+/, (_m, p) => `${p}1`)
+    : `${withoutCurl}&zoom=1`;
+  return withZoom1.replace("zoom=1", "zoom=1&w=800");
+}
+
 const MAX_ATTEMPTS = 3;
 
 const OPEN_LIBRARY_COVER_ATTEMPTS = 2;
@@ -70,9 +93,8 @@ export async function fetchBookMetadata(isbn: string): Promise<BookMetadata | nu
       if (volumeInfo) {
         const rawThumbnail: string | undefined =
           volumeInfo.imageLinks?.thumbnail ?? volumeInfo.imageLinks?.smallThumbnail;
-        // Google Books serves http:// links; upgrade to https so they don't
-        // get blocked as mixed content on an https-served app.
-        coverUrl = rawThumbnail ? rawThumbnail.replace(/^http:/, "https:") : null;
+        // http -> https + request a larger render than the 128px default.
+        coverUrl = upgradeCoverUrl(rawThumbnail);
         description = volumeInfo.description ?? null;
       }
       lastStatus = null;
@@ -164,7 +186,7 @@ export async function searchBookCandidates(query: string): Promise<BookSearchCan
       isbn: isbn13,
       title: (volumeInfo.title as string) ?? "Untitled",
       author: ((volumeInfo.authors as string[] | undefined) ?? []).join(", ") || "Unknown author",
-      coverUrl: rawThumbnail ? rawThumbnail.replace(/^http:/, "https:") : null,
+      coverUrl: upgradeCoverUrl(rawThumbnail),
       description: (volumeInfo.description as string) ?? null,
     });
   }

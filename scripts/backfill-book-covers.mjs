@@ -33,6 +33,21 @@ function loadEnvLocal() {
 const MAX_ATTEMPTS = 3;
 const OPEN_LIBRARY_COVER_ATTEMPTS = 2;
 
+// Mirrors lib/google-books.ts upgradeCoverUrl: http->https, and swap
+// Google Books' 128px &zoom=1 thumbnail for a &w=800 render of the same
+// cover. Non-Google URLs pass through.
+function upgradeCoverUrl(raw) {
+  if (!raw) return null;
+  const url = raw.replace(/^http:/, "https:");
+  if (!url.includes("books.google.com/books/content")) return url;
+  if (/[?&]w=\d/.test(url)) return url;
+  const withoutCurl = url.replace(/&edge=curl/g, "");
+  const withZoom1 = /[?&]zoom=\d+/.test(withoutCurl)
+    ? withoutCurl.replace(/([?&]zoom=)\d+/, (_m, p) => `${p}1`)
+    : `${withoutCurl}&zoom=1`;
+  return withZoom1.replace("zoom=1", "zoom=1&w=800");
+}
+
 // Open Library's covers CDN serves a generic "no cover" image instead of a
 // 404 unless ?default=false is passed.
 async function fetchOpenLibraryCover(isbn) {
@@ -72,7 +87,7 @@ async function fetchBookMetadata(isbn, apiKey) {
       const volumeInfo = data?.items?.[0]?.volumeInfo;
       if (volumeInfo) {
         const rawThumbnail = volumeInfo.imageLinks?.thumbnail ?? volumeInfo.imageLinks?.smallThumbnail;
-        coverUrl = rawThumbnail ? rawThumbnail.replace(/^http:/, "https:") : null;
+        coverUrl = upgradeCoverUrl(rawThumbnail);
         description = volumeInfo.description ?? null;
       }
       lastStatus = null;

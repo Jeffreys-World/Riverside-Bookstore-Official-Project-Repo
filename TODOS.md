@@ -14,6 +14,28 @@ and `addMerchandiseRequestSchema` now carries an explicit message (e.g. "ISBN mu
 
 ---
 
+## Book cover audit: wrong GoT cover, Sapiens placeholder, all covers low-res
+
+**What:** 2026-08-27 audit of all 28 book covers against the title/author printed on the art.
+26/28 matched. Two bugs + a resolution problem:
+- **A Game of Thrones** showed the cover for *A Brief History of Time*. Root cause: the row's
+  ISBN `9780553380163` actually belongs to Hawking's book (Bantam), so every cover source
+  resolved it there. Wrong ISBN was seeded in `0019_expand_book_catalog.sql` (also referenced by
+  `0023` price update and `0027`'s "World-Building with George R.R. Martin" event).
+- **Sapiens** had Google Books' "cover to be revealed" placeholder (volume `ibALnwEACAAJ`).
+- **All 26 Google covers** were the fixed 128px `&zoom=1` thumbnail — soft on the redesigned cards.
+
+**Status: Fixed (2026-08-27), pending migration apply.** `0035_hi_res_covers_and_got_isbn.sql`:
+corrects the GoT ISBN to `9780553386790` (HBO tie-in, drops+remakes the `author_events` FK around
+the PK change; 0 orders affected), repoints GoT + Sapiens to verified real covers, and rewrites
+every Google cover_url to `&w=800` (~300px catalog-only editions, up to ~800px preview editions;
+`&edge=curl` dropped). `lib/google-books.ts` `upgradeCoverUrl()` + `scripts/backfill-book-covers.mjs`
+apply the same transform to future adds. Open Library was ruled out as a bulk source — it returned
+*Project Hail Mary* for Klara's ISBN and *A Brief History of Time* for GoT's. 7 new tests.
+**Apply `0035` to the live DB** (dashboard SQL editor or `db push` from repo root), same as `0034`.
+
+---
+
 ## Real customer accounts (Supabase Auth email/password) for Product A
 
 **What:** Replace the cosmetic sign-up (which minted a `cust_XXXXX` and remembered it in
