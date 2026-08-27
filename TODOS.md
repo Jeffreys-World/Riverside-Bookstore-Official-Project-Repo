@@ -1,5 +1,78 @@
 # TODOS
 
+## Full-app bug sweep (2026-08-27): 49 confirmed findings, most fixed
+
+**What:** background audit + verify workflow over every area `/qa` didn't
+browser-test (Product B, Product D, Product C contact/events, dark mode,
+mobile/responsive, Product A forms) + the deferred ISSUE-005. 49 confirmed
+findings; fixed the 3 High, all Medium, and most Low in `main`
+(commits `f30db34`..`545f11a`). 66 unit tests pass, `tsc` + `eslint` clean.
+
+### Fixed & shipped
+- **Product D not staff-gated (High)** — `requireStaffPage()` + `assertStaff()`
+  gate (new `lib/staff-auth.ts`); Product B page refactored onto the same helper.
+- **Author-event times had no fixed timezone (High)** — chatbot + Events tab
+  reported 7pm ET events as 11pm / next-day on a UTC server. Pinned
+  `America/New_York` in `formatEvent*` (`STORE_TIME_ZONE`).
+- **Realtime reconnect teardown loop (High)** — `lib/realtime.ts` oscillated
+  forever after any drop. Fixed with a stale-attempt guard + timer cleanup;
+  the dashboard now re-pulls orders/books/merch on every reconnect.
+- **Checkout false success (Med)** — showed "pickup arranged" when every line
+  failed. Now returns an error; success screen gates the pickup/points lines.
+- **Product D**: `handleSubmit` catch, submit-time image snapshot, markdown-
+  tolerant section parser (`lib/marketing-parse`), note length cap, query-error
+  banner, canvas `aria-label`.
+- **Product C chat**: transport-error catch, scroll container + auto-scroll,
+  `maxLength`, progress moved out of `role="log"`, cover `onError` fallback,
+  panels kept mounted on tab switch, full ARIA tablist + arrow keys.
+- **Product B**: friendly DB-error mapping (`lib/db-errors`), `searchBooksAction`
+  staff-gated, transient `is_staff()` error no longer bounces staff to the
+  storefront.
+- **Theming**: light-mode `--color-gold` darkened to pass AA; `--color-scrim`
+  token (backdrop stays dark in both themes); CSS-driven theme-toggle glyph;
+  flash-script `matchMedia` fallback hardened; info-bearing `text-ink/40`→`/60`;
+  empty-cart CTA legibility.
+- **Responsive**: header holds stacked layout to `lg`; mobile nav dropdowns
+  pin to the viewport; `StampBadge` `whitespace-nowrap`; 1-col card grids and
+  scroll-strip tab bars below `sm`; 44px touch targets.
+- **Checkout/RSVP**: nonexistent customer ID → specific message (FK 23503);
+  past pickup date rejected; localStorage reads moved post-mount.
+
+### Needs a production DB apply (migrations authored, not yet applied)
+1. **`0037_stock_correction_null_guard.sql`** — `remove_book_stock` /
+   `remove_merchandise_stock` coerced NULL stock to 0.
+2. **`0038_clear_placeholder_stock_photos.sql`** — ISSUE-005: nulls every
+   picsum `image_url`; the code side (branded `CardImage` placeholder + event
+   hero routed through it) already shipped.
+
+Apply each in the Supabase dashboard SQL editor, then from the repo root:
+`npx supabase migration repair --status applied 0037` (and `0038`).
+
+### Still open (low severity — not yet fixed)
+- **Mutating Product A actions trust a client `customer_id`** with no
+  session-ownership check (`actions.ts` checkout/redeemBlindDate/donatePoints,
+  `events/actions.ts` rsvp). Downgraded (documented pre-auth model + Next CSRF),
+  but donate/blind-date are irreversible on a shared kiosk. Fix: route through
+  `resolveCustomerId({ passedId })` so a session wins and a mismatch is rejected.
+- **Duplicate-email signup** dead-ends on the "check your email" screen when
+  Supabase email confirmations are ON (`actions.ts` `customerSignUpAction`) —
+  detect the obfuscated existing-user shape and redirect to `?error=`.
+- **Account-page auth tabs** navigate off `/product-a/account` on any error —
+  give the embedded forms `useActionState` inline errors.
+- **Sign-up silently adopts a stale localStorage `customer_id`** on shared
+  devices (`components/claim-id-field.tsx`) — make adoption an explicit opt-in.
+- **Product B**: no way to *raise* a stock count or edit a price from the
+  dashboard (only decrement/delete); `page.tsx` still redirects on a genuine
+  `is_staff()` error rather than showing an inline retry.
+- **Product C**: rotating progress message still re-announces (moved out of the
+  log but shares a polite region); `role=tablist` on the FAQ accordion parent.
+- **Dark mode**: `box-shadow` invisible on near-black surfaces (dropdowns got a
+  border bump; drawers still lean on the scrim); this is cosmetic.
+- **`stripMarkdownEmphasis`** `_` rule now word-bounded but `*` rule is still
+  greedy (lower risk — models rarely emit intraword asterisks).
+
+---
+
 ## /qa pass (2026-08-27): full-app exhaustive, 5 issues, 4 fixed
 
 **What:** `/qa --exhaustive` against localhost:3000, all 4 products. Report:
@@ -41,6 +114,12 @@ pending `/design-consultation` for C+D.
 
 **Fix:** decide the direction, then either a migration to null the `image_url`s + a UI
 placeholder, or a batch of real image URLs.
+
+**Status: code side shipped 2026-08-27** — `components/card-image.tsx` now renders a branded
+typographic placeholder, and the event detail hero routes through it. Migration
+`0038_clear_placeholder_stock_photos.sql` nulls the picsum rows — **not yet applied to prod**
+(see the sweep entry at the top of this file for the apply steps). Once applied, every
+placeholder shows the branded panel; real staff-entered URLs are left intact.
 
 ---
 
