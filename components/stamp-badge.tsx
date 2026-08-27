@@ -33,7 +33,7 @@ export function StampBadge({
 }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full border-2 border-dashed px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide ${TONE_CLASSES[tone]} ${TONE_ROTATION[tone]} ${className}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-full border-2 border-dashed px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide ${TONE_CLASSES[tone]} ${TONE_ROTATION[tone]} ${className}`}
     >
       {children}
     </span>

@@ -428,7 +428,7 @@ export function Dashboard({
       <div
         role="tablist"
         aria-label="Inventory sections"
-        className="mt-8 flex flex-wrap items-center justify-between gap-2 border-b border-ink/10"
+        className="mt-8 flex items-center gap-2 overflow-x-auto border-b border-ink/10 sm:flex-wrap sm:justify-between sm:overflow-x-visible"
       >
         {TABS.map((tab) => (
           <button
@@ -437,7 +437,7 @@ export function Dashboard({
             role="tab"
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`min-h-[52px] flex-1 whitespace-nowrap border-b-2 px-4 py-4 text-base font-medium transition-transform duration-150 hover:scale-105 ${
+            className={`min-h-[52px] flex-none whitespace-nowrap border-b-2 px-4 py-4 text-base font-medium transition-transform duration-150 hover:scale-105 sm:flex-1 ${
               activeTab === tab.key
                 ? "border-accent text-ink"
                 : "border-transparent text-ink/60 hover:text-ink"
@@ -462,7 +462,7 @@ export function Dashboard({
               No pending pre-orders right now.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {orders.map((o) => (
                 <article
                   key={o.order_id}
@@ -494,7 +494,7 @@ export function Dashboard({
               No titles in the catalog yet.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {flaggedBooks.map((f) => (
                 <article
                   key={f.id}
@@ -556,7 +556,7 @@ export function Dashboard({
               No cards or gifts in the catalog yet.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {flaggedMerchandise.map((f) => (
                 <article
                   key={f.id}

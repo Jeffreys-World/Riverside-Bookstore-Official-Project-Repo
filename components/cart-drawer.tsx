@@ -78,7 +78,7 @@ export function CartDrawer() {
                           onClick={() => setQuantity(item.isbn, item.quantity - 1)}
                           disabled={item.quantity <= 1}
                           aria-label={`Decrease quantity of ${item.book_title}`}
-                          className="min-h-[32px] min-w-[32px] text-ink transition-transform duration-150 hover:scale-125 disabled:opacity-30 disabled:hover:scale-100"
+                          className="flex min-h-[44px] min-w-[44px] items-center justify-center text-ink transition-transform duration-150 hover:scale-125 disabled:opacity-30 disabled:hover:scale-100"
                         >
                           −
                         </button>
@@ -93,7 +93,7 @@ export function CartDrawer() {
                           onClick={() => setQuantity(item.isbn, item.quantity + 1)}
                           disabled={item.quantity >= item.maxQuantity}
                           aria-label={`Increase quantity of ${item.book_title}`}
-                          className="min-h-[32px] min-w-[32px] text-ink transition-transform duration-150 hover:scale-125 disabled:opacity-30 disabled:hover:scale-100"
+                          className="flex min-h-[44px] min-w-[44px] items-center justify-center text-ink transition-transform duration-150 hover:scale-125 disabled:opacity-30 disabled:hover:scale-100"
                         >
                           +
                         </button>
@@ -101,7 +101,7 @@ export function CartDrawer() {
                       <button
                         type="button"
                         onClick={() => removeItem(item.isbn)}
-                        className="text-xs text-claret underline-offset-2 transition-transform duration-150 hover:scale-105 hover:underline"
+                        className="inline-flex min-h-[44px] items-center px-2 text-xs text-claret underline-offset-2 transition-transform duration-150 hover:scale-105 hover:underline"
                       >
                         Remove
                       </button>

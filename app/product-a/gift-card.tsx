@@ -53,7 +53,7 @@ export function GiftCard(item: GiftCardProps) {
       <div className="flex flex-1 flex-col gap-2 p-4">
         <p className="text-ink">{item.item_name}</p>
         <p className="text-xs capitalize text-ink/50">{item.category}</p>
-        <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2">
           <span className="font-mono text-sm font-semibold text-gold">
             {currencyFormatter.format(item.price)}
           </span>

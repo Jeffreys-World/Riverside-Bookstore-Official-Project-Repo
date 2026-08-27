@@ -77,7 +77,18 @@ export interface NavMenuItem {
 }
 
 const MENU_ITEM_CLASS =
-  "block w-full scale-100 px-4 py-2 text-left text-sm text-ink transition-transform duration-150 hover:scale-105 hover:bg-ink/5";
+  "block min-h-[44px] w-full scale-100 px-4 py-3 text-left text-sm text-ink transition-transform duration-150 hover:scale-105 hover:bg-ink/5";
+
+// Shared panel chrome. Below lg the header is the stacked, centre-wrapped
+// layout, so an edge-anchored `absolute` panel (256px, anchored to a
+// shrink-wrapped trigger) runs off the viewport and its labels get
+// clipped past x=0. Below lg the panel is instead pinned to the viewport
+// edges (`fixed inset-x-3`, vertical position left at its in-flow spot
+// via top-auto) so it always fits; at lg it returns to `absolute` and
+// the per-menu edge anchoring. border-ink/30 in dark mode because the
+// drop shadow is invisible on the near-black surface.
+const PANEL_BASE =
+  "fixed inset-x-3 top-auto z-40 mt-1 rounded-md border border-ink/15 bg-surface shadow-lg dark:border-ink/30 lg:absolute lg:inset-x-auto lg:top-full";
 
 export function NavMenu({
   label,
@@ -108,7 +119,7 @@ export function NavMenu({
         <div
           role="menu"
           aria-label={label}
-          className="absolute right-0 top-full z-40 mt-1 min-w-[13rem] rounded-md border border-ink/10 bg-surface py-1 shadow-lg"
+          className={`${PANEL_BASE} py-1 lg:right-0 lg:w-auto lg:min-w-[13rem]`}
         >
           {header && (
             <p className="truncate border-b border-ink/10 px-4 py-2 text-xs text-ink/60">{header}</p>
@@ -168,14 +179,14 @@ export function NavPreviewMenu({
         <div
           role="menu"
           aria-label={label}
-          className="absolute left-0 top-full z-40 mt-1 w-64 rounded-md border border-ink/10 bg-surface p-4 shadow-lg"
+          className={`${PANEL_BASE} p-4 lg:left-0 lg:w-64`}
         >
           <p className="text-sm text-ink/70">{description}</p>
           <Link
             href={ctaHref}
             role="menuitem"
             onClick={() => setOpen(false)}
-            className="mt-3 inline-block text-sm font-medium text-accent underline-offset-2 transition-transform duration-150 hover:scale-105 hover:underline"
+            className="mt-3 inline-flex min-h-[44px] items-center text-sm font-medium text-accent underline-offset-2 transition-transform duration-150 hover:scale-105 hover:underline"
           >
             {ctaLabel} →
           </Link>

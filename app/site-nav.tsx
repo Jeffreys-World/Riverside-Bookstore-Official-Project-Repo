@@ -123,15 +123,17 @@ export function SiteNav() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-ink/10 bg-surface/95 backdrop-blur">
-      {/* Below sm: the balanced single row has nowhere to give — three
-          preview menus, the wordmark, and My Account/Support/cart don't
-          fit one line under ~640px without pushing the cart button
-          off-screen. Stack instead: centered logo row, then a wrapping
-          link row, same shape this header used before the single-row
-          layout. At sm and up, a 3-column grid (not flex — a flex center
-          child drifts off true-center the moment the left/right clusters
-          differ in width) keeps the logo centered on one row. */}
-      <div className="flex flex-col items-center gap-2 px-6 py-3 sm:hidden">
+      {/* The balanced single row needs ~1000px to fit — three preview
+          menus, the wordmark, and My Account/Support/cart. Below lg it
+          has nowhere to give (every trigger and the wordmark are
+          whitespace-nowrap), so it would overflow the viewport from
+          ~640px up to that fit width — every tablet-portrait and
+          split-screen size. Hold the stacked layout until lg: centered
+          logo row, then a wrapping link row. At lg and up, a 3-column
+          grid (not flex — a flex center child drifts off true-center the
+          moment the left/right clusters differ in width) keeps the logo
+          centered on one row. */}
+      <div className="flex flex-col items-center gap-2 px-6 py-3 lg:hidden">
         <Link href="/product-a" className="font-serif text-2xl tracking-wide text-ink">
           Riverside Books
         </Link>
@@ -141,14 +143,14 @@ export function SiteNav() {
         </nav>
       </div>
 
-      {/* Both side columns are 1fr (equal width) and stretch full-width,
-          then spread their own items with justify-between — the outermost
-          item lands at the page edge (px-6) and the innermost item lands
-          right against the title, so the gap to the title is the same
-          fixed grid `gap` on both sides no matter how many items are in
-          each cluster, and there's no dead space at either edge. */}
-      <nav className="mx-auto hidden max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-6 px-6 py-3 sm:grid">
-        <div className="flex items-center justify-between gap-4 justify-self-stretch">{shopLinks}</div>
+      {/* Both side columns are minmax(0,1fr) (equal width, allowed to
+          shrink below content) and stretch full-width, then spread their
+          own items with justify-between — the outermost item lands at the
+          page edge (px-6) and the innermost item lands right against the
+          title, so the gap to the title is the same fixed grid `gap` on
+          both sides no matter how many items are in each cluster. */}
+      <nav className="mx-auto hidden max-w-7xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-6 px-6 py-3 lg:grid">
+        <div className="flex min-w-0 items-center justify-between gap-4 justify-self-stretch">{shopLinks}</div>
 
         <Link
           href="/product-a"
@@ -157,7 +159,7 @@ export function SiteNav() {
           Riverside Books
         </Link>
 
-        <div className="flex items-center justify-between gap-4 justify-self-stretch">{utilityLinks}</div>
+        <div className="flex min-w-0 items-center justify-between gap-4 justify-self-stretch">{utilityLinks}</div>
       </nav>
     </header>
   );
