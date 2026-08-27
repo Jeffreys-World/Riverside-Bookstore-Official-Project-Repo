@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  availabilityNoteFor,
   bookSearchOrFilter,
   evaluateStockStatus,
   merchSearchOrFilter,
@@ -107,5 +108,44 @@ describe("merchSearchOrFilter", () => {
     expect(f).toContain("item_name.ilike.%a tote bag%");
     expect(f).toContain("item_name.ilike.%tote%");
     expect(f).not.toContain("ilike.%a%"); // "a" is too short to add as its own clause
+  });
+});
+
+// Regression: ISSUE-003 — the support chatbot relayed the raw StockStatus
+// enum to customers ("its stock status is currently showing as
+// needs_attention"). availabilityNoteFor is what app/product-c/actions.ts
+// now hands the model instead.
+// Found by /qa on 2026-08-27
+// Report: .gstack/qa-reports/qa-report-localhost-3000-2026-08-27.md
+describe("availabilityNoteFor", () => {
+  it("never returns a raw StockStatus token", () => {
+    const raw = ["in_stock", "low_stock", "out_of_stock", "needs_attention"] as const;
+    for (const kind of ["book", "merch"] as const) {
+      for (const status of raw) {
+        const note = availabilityNoteFor(status, kind);
+        for (const token of raw) expect(note).not.toContain(token);
+      }
+    }
+  });
+
+  it("frames an unstocked book as a pre-order title, not low stock", () => {
+    const note = availabilityNoteFor("needs_attention", "book");
+    expect(note).toMatch(/pre-order/i);
+    expect(note).not.toMatch(/low|running low|few left/i);
+  });
+
+  it("never calls a card/gift a pre-order title (merch is in-store only)", () => {
+    for (const status of ["out_of_stock", "needs_attention"] as const) {
+      expect(availabilityNoteFor(status, "merch")).not.toMatch(/pre-order/i);
+    }
+  });
+
+  it("defaults to book wording when kind is omitted", () => {
+    expect(availabilityNoteFor("in_stock")).toBe(availabilityNoteFor("in_stock", "book"));
+  });
+
+  it("tells the customer an in-stock book can be reserved for pickup", () => {
+    expect(availabilityNoteFor("in_stock", "book")).toMatch(/reserve/i);
+    expect(availabilityNoteFor("low_stock", "book")).toMatch(/reserve/i);
   });
 });
