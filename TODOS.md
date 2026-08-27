@@ -1,5 +1,47 @@
 # TODOS
 
+## /qa pass (2026-08-27): full-app exhaustive, 5 issues, 4 fixed
+
+**What:** `/qa --exhaustive` against localhost:3000, all 4 products. Report:
+`.gstack/qa-reports/qa-report-localhost-3000-2026-08-27.md`.
+
+- Setup blocker fixed first: dev server was serving a corrupted `.next` (a `npm run build`
+  had run over the live `npm run dev` — `main-app.js` 404'd, zero hydration sitewide).
+  Killed it, `rm -rf .next`, restarted. No source change.
+- **ISSUE-001 (High):** "A Game of Thrones" catalog card + drawer showed the *A Brief History
+  of Time* blurb — `0035` fixed this row's ISBN + cover but not `books.description`.
+  Fixed by `0036_fix_got_description.sql` (commit `24aff3a`). **Apply `0036` to the live DB**
+  (dashboard SQL editor, then `migration repair --status applied 0036`), same as `0035`.
+- **ISSUE-003 (Med):** support chatbot relayed the raw `needs_attention` stock enum to a
+  customer and mislabelled a pre-order title as low stock. Fixed — `availabilityNoteFor` in
+  `lib/inventory.ts` + `app/product-c/actions.ts` (commit `a7b1a45`, regression test `6e3ea2c`).
+- **ISSUE-002 (Med):** header nav tab underlines curled up at the ends (`rounded-md` bending
+  the `border-b-2`). Fixed with `rounded-b-none` in `components/nav-menu.tsx` (commit `9af6162`).
+- **ISSUE-004 (Low):** no favicon → 2 console 404s per page. Added `app/icon.svg` (commit
+  `a84d0d8`).
+
+**Status: 4 fixed** (ISSUE-001 pending its prod DB apply), **1 deferred** (ISSUE-005 below).
+
+---
+
+## Events + merchandise images are random Lorem Picsum stock photos (ISSUE-005)
+
+**What:** `author_events.image_url` and `merchandise.image_url` are seeded with
+`picsum.photos` URLs (`0017`, `0020`, `0025`, `0028`, `0029`). They render fine but the photos
+have nothing to do with the content — the Kazuo Ishiguro event hero is a van in a desert, a
+greeting-card thumbnail is a pineapple. On the event *detail* page the mismatched hero is
+large and prominent.
+
+**Why:** Flagged by `/qa` on 2026-08-27 (ISSUE-005), deferred — this is a product/design
+decision, not a bug. Options: real art per item; a typographic/branded placeholder; or drop
+images entirely for browse-only merch and keep a lighter card. Fits naturally into the
+pending `/design-consultation` for C+D.
+
+**Fix:** decide the direction, then either a migration to null the `image_url`s + a UI
+placeholder, or a batch of real image URLs.
+
+---
+
 ## Give "Add a Book" validation errors field-level detail
 
 **What:** `app/product-b/actions.ts:58` falls back to Zod's raw issue message on a failed `addBookRequestSchema` parse, which for several validators (`types/schema.ts:269`, e.g. the ISBN regex) is just the bare string "Invalid" — no indication of which field or why.
