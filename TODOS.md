@@ -40,7 +40,21 @@ orders.
 
 ---
 
-## Tighten customer-data RLS to the authenticated identity
+## Product C chatbot: genre-based recommendations + merch thumbnails
+
+**What:** After the 2026-08-27 investigate pass (author/price/merch search + fast model),
+`check_inventory` still can't answer open-ended discovery questions like "recommend me a thriller"
+or "what mysteries do you carry" — `books` has no genre/category column (CLAUDE.md's data contract
+doesn't list one). Also, the chat widget only renders cover thumbnails for book matches, not for
+the merchandise it now returns (`merchandise.image_url` exists, added with the staff add-merch flow).
+
+**Why:** Lower-value than the core fix that shipped (`be12c74`) — the three concrete gaps users hit
+(author search, price, "do you sell cards") are closed. Genre recommendations need either a schema
+change (add `books.genre`, backfill 28 rows) or a keyword-in-description heuristic. Merch thumbnails
+are a ~15-line widget change.
+
+**Effort:** M (genre) / S (thumbnails)
+**Priority:** P3
 
 **What:** Re-scope `get_loyalty_balance` / `get_customer_orders` (and any sibling customer-data
 reads) to `auth.uid()` instead of `anon` + a `p_customer_id text` param. Add `auth.uid()`-scoped
