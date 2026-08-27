@@ -220,6 +220,14 @@ export const PICKUP_LOCATION = {
   addressLine2: "Long Island City, NY 11101",
 } as const;
 
+// The store is a single physical location in Long Island City. Every
+// event time must render in store-local time no matter where the code
+// runs — the Product C chatbot formats event times in a 'use server'
+// action (server TZ = UTC on Vercel), and the Events tab formats them in
+// the customer's browser TZ. Without a pinned zone the same event shows
+// three different times. Seed rows store an explicit Eastern offset.
+export const STORE_TIME_ZONE = "America/New_York";
+
 // ---------------------------------------------------------------------------
 // Order status — display label + StampBadge tone (UI layer only).
 // ---------------------------------------------------------------------------
@@ -321,23 +329,30 @@ export type AddMerchandiseRequest = z.infer<typeof addMerchandiseRequestSchema>;
 // Display formatting helpers (UI layer only — never used for storage)
 // ---------------------------------------------------------------------------
 
-/** "2026-09-05T18:30:00-07:00" -> "September 5, 2026 at 6:30 PM" */
+/** "2026-09-05T18:30:00-04:00" -> "September 5, 2026 at 6:30 PM" (store-local, always). */
 export function formatEventTimestamp(iso: string): string {
   const d = new Date(iso);
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "long",
     timeStyle: "short",
+    timeZone: STORE_TIME_ZONE,
   }).format(d);
 }
 
-/** "2026-09-05T18:30:00-07:00" -> "September 5, 2026" — the Events page's separate Date column. */
+/** "2026-09-05T18:30:00-04:00" -> "September 5, 2026" — the Events page's separate Date column. */
 export function formatEventDate(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(new Date(iso));
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "long",
+    timeZone: STORE_TIME_ZONE,
+  }).format(new Date(iso));
 }
 
-/** "2026-09-05T18:30:00-07:00" -> "6:30 PM" — the Events page's separate Time column. */
+/** "2026-09-05T18:30:00-04:00" -> "6:30 PM" — the Events page's separate Time column. */
 export function formatEventTime(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", { timeStyle: "short" }).format(new Date(iso));
+  return new Intl.DateTimeFormat("en-US", {
+    timeStyle: "short",
+    timeZone: STORE_TIME_ZONE,
+  }).format(new Date(iso));
 }
 
 /**
