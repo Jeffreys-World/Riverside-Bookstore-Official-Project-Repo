@@ -5,20 +5,24 @@ import { useEffect, useState } from "react";
 const STORAGE_KEY = "riverside-theme";
 
 export function ThemeToggle() {
-  // Always starts false so the client's first render matches the
-  // server's (which has no access to the browser's dark-mode class or
-  // localStorage) — the inline blocking script in app/layout.tsx already
-  // set the real `dark` class on <html> before paint, this just corrects
-  // the icon to match right after hydration, in the same tick a user
-  // can't perceive as a flash.
+  // The inline blocking script in app/layout.tsx sets the real `dark`
+  // class on <html> before paint. `isDark` is only used to pick the
+  // directional aria-label, and only *after* mount — before that the
+  // button carries a state-independent name so a slow hydration never
+  // leaves a screen reader with the wrong label ("Switch to dark mode"
+  // while already dark). The glyph itself is driven by CSS (dark: variant
+  // keys off the class the script already set), so it's correct at first
+  // paint with zero JS.
+  const [mounted, setMounted] = useState(false);
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains("dark"));
+    setMounted(true);
   }, []);
 
   function toggle() {
-    const next = !isDark;
+    const next = !document.documentElement.classList.contains("dark");
     setIsDark(next);
     document.documentElement.classList.toggle("dark", next);
     try {
@@ -33,11 +37,18 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={
+        mounted
+          ? isDark
+            ? "Switch to light mode"
+            : "Switch to dark mode"
+          : "Toggle light or dark theme"
+      }
       className="flex min-h-[48px] min-w-[48px] flex-none items-center justify-center rounded-md text-ink/70 transition-transform duration-150 hover:scale-125 hover:bg-field hover:text-ink"
     >
       <span aria-hidden className="text-xl">
-        {isDark ? "☀️" : "🌙"}
+        <span className="inline dark:hidden">🌙</span>
+        <span className="hidden dark:inline">☀️</span>
       </span>
     </button>
   );

@@ -111,7 +111,7 @@ export function NavMenu({
           className="absolute right-0 top-full z-40 mt-1 min-w-[13rem] rounded-md border border-ink/10 bg-surface py-1 shadow-lg"
         >
           {header && (
-            <p className="truncate border-b border-ink/10 px-4 py-2 text-xs text-ink/40">{header}</p>
+            <p className="truncate border-b border-ink/10 px-4 py-2 text-xs text-ink/60">{header}</p>
           )}
           {items.map((item) =>
             item.action ? (

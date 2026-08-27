@@ -43,7 +43,11 @@ export default function RootLayout({
             a plain inline script rather than a useEffect in ThemeToggle. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("riverside-theme");var d=t?t==="dark":window.matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.classList.toggle("dark",d);}catch(e){}})();`,
+            // The matchMedia fallback is in its own try so a context where
+            // merely touching localStorage throws (sandboxed iframe,
+            // "block all cookies") still honours the OS dark preference
+            // instead of silently falling through to light.
+            __html: `(function(){var d=false;try{var t=localStorage.getItem("riverside-theme");if(t){d=t==="dark";}else{d=window.matchMedia("(prefers-color-scheme: dark)").matches;}}catch(e){try{d=window.matchMedia("(prefers-color-scheme: dark)").matches;}catch(_){}}try{document.documentElement.classList.toggle("dark",d);}catch(e){}})();`,
           }}
         />
       </head>

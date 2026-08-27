@@ -30,6 +30,8 @@ const config: Config = {
         // cards throughout the app and need to visually pop against them,
         // the same job plain white did before dark mode existed.
         field: "rgb(var(--color-field) / <alpha-value>)",
+        // Modal/drawer backdrop — black in both themes (see globals.css).
+        scrim: "rgb(var(--color-scrim) / <alpha-value>)",
       },
       fontFamily: {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],

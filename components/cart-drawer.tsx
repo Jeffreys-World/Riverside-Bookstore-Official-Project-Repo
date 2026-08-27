@@ -13,7 +13,7 @@ export function CartDrawer() {
       <div
         aria-hidden={!isOpen}
         onClick={close}
-        className={`fixed inset-0 z-40 bg-ink/30 transition-opacity ${
+        className={`fixed inset-0 z-40 bg-scrim/50 transition-opacity ${
           isOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
@@ -123,10 +123,10 @@ export function CartDrawer() {
             href="/product-a/checkout"
             onClick={close}
             aria-disabled={items.length === 0}
-            className={`mt-4 block min-h-[44px] rounded-md px-6 py-2 text-center font-medium text-paper transition-transform duration-150 ${
+            className={`mt-4 block min-h-[44px] rounded-md px-6 py-2 text-center font-medium transition-transform duration-150 ${
               items.length === 0
-                ? "pointer-events-none bg-ink/20"
-                : "bg-accent hover:scale-105 hover:bg-accent/90"
+                ? "pointer-events-none border border-ink/15 bg-ink/5 text-ink/40"
+                : "bg-accent text-paper hover:scale-105 hover:bg-accent/90"
             }`}
           >
             Go to checkout

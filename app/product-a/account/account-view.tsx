@@ -361,7 +361,7 @@ export function AccountView({
               Signed in as <span className="text-ink">{data.email ?? data.customerId}</span>
             </p>
             {data.email && (
-              <p className="font-mono text-xs text-ink/40">{data.customerId}</p>
+              <p className="font-mono text-xs text-ink/60">{data.customerId}</p>
             )}
           </div>
           {data.email ? (
@@ -452,8 +452,8 @@ export function AccountView({
                     </div>
                     <p className="mt-1 text-xs text-ink/60">{tier.description}</p>
                     {!unlocked && (
-                      <p className="mt-1 text-xs text-ink/40">
-                        {tier.points - data.rewardPoints} points to go
+                      <p className="mt-1 text-xs text-ink/60">
+ points to go
                       </p>
                     )}
                   </div>
@@ -544,7 +544,7 @@ export function AccountView({
                         <p className="text-ink">
                           {o.book_title} &times; {o.quantity}
                         </p>
-                        <span className="font-mono text-xs text-ink/40">{o.order_id}</span>
+                        <span className="font-mono text-xs text-ink/60">{o.order_id}</span>
                         <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
                           <StampBadge tone={ORDER_STATUS_TONE[status] ?? "neutral"}>
                             {ORDER_STATUS_LABEL[status] ?? o.order_status}

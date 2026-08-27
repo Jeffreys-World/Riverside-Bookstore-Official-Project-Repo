@@ -676,7 +676,7 @@ export function Dashboard({
                       <span className="min-w-0">
                         <span className="block truncate text-sm text-ink">{c.title}</span>
                         <span className="block truncate text-xs text-ink/60">{c.author}</span>
-                        <span className="block font-mono text-xs text-ink/40">{c.isbn}</span>
+                        <span className="block font-mono text-xs text-ink/60">{c.isbn}</span>
                       </span>
                     </button>
                   </li>

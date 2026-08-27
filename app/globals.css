@@ -8,11 +8,19 @@
     --color-ink: 27 46 40; /* #1B2E28 */
     --color-accent: 63 108 81; /* #3F6C51 */
     --color-accent-soft: 228 237 231; /* #E4EDE7 */
-    --color-gold: 176 141 63; /* #B08D3F */
+    /* #8A6D28 — darkened from #B08D3F, which measured ~2.5:1 on bg-surface
+       and failed WCAG AA everywhere gold is a *text* color (prices, the
+       PENDING/PRE-ORDER/Low-stock stamps, reward points). ~4.6:1 now. The
+       .dark value already passes and is left alone. */
+    --color-gold: 138 109 40;
     --color-claret: 122 46 46; /* #7A2E2E */
     --color-claret-soft: 247 233 233; /* #F7E9E9 */
     --color-surface: 239 231 211; /* #EFE7D3 */
     --color-field: 255 255 255; /* pure white, same as pre-dark-mode inputs */
+    /* Modal/drawer backdrop. Must dim the page in BOTH themes — a
+       token that flipped with --color-ink would *lighten* the dark
+       theme's page instead of dimming it. */
+    --color-scrim: 0 0 0;
   }
 
   /* Same warm bookstore palette, inverted for a dark reading room rather
@@ -28,6 +36,7 @@
     --color-claret-soft: 58 32 32;
     --color-surface: 33 29 23;
     --color-field: 46 41 33; /* lighter than dark surface, so fields still pop */
+    --color-scrim: 0 0 0; /* backdrop stays dark in both themes */
   }
 
   :focus-visible {
