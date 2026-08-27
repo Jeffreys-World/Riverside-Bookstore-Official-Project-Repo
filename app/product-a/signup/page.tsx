@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { customerSignUpAction } from "../actions";
 import { SubmitButton } from "@/components/submit-button";
-import { ClaimIdField } from "./claim-id-field";
+import { ClaimIdField } from "@/components/claim-id-field";
 
 /**
  * Customer registration. Real email + password via Supabase Auth

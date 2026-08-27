@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { clearCustomerId, loadCustomerId, saveCustomerId } from "@/lib/customer-id-storage";
 import {
@@ -12,9 +11,13 @@ import {
 } from "@/types/schema";
 import { StampBadge } from "@/components/stamp-badge";
 import { CardImage } from "@/components/card-image";
+import { SubmitButton } from "@/components/submit-button";
+import { ClaimIdField } from "@/components/claim-id-field";
 import {
   getAccountAction,
+  customerSignInAction,
   customerSignOutAction,
+  customerSignUpAction,
   redeemBlindDateAction,
   donatePointsAction,
   type AccountOrder,
@@ -30,6 +33,16 @@ const ACCOUNT_TABS = [
   { key: "orders", label: "Order History" },
 ] as const;
 type AccountTabKey = (typeof ACCOUNT_TABS)[number]["key"];
+
+// The signed-out screen leads with these two tabs so a first-time visitor
+// sees "Create account" as a peer of "Sign in", not a secondary button.
+// Both panels post to the same Server Actions the dedicated
+// /product-a/login and /product-a/signup pages use.
+const AUTH_TABS = [
+  { key: "signin", label: "Sign in" },
+  { key: "signup", label: "Create account" },
+] as const;
+type AuthTabKey = (typeof AUTH_TABS)[number]["key"];
 
 // Loyalty points have no anon-safe Realtime path today: `customers` is
 // deliberately excluded from an open anon SELECT policy (0002's reasoning
@@ -75,6 +88,7 @@ export function AccountView({
     { kind: "pending" } | { kind: "done"; pointsDonated: number } | { kind: "error"; message: string } | null
   >(null);
   const [activeTab, setActiveTab] = useState<AccountTabKey>("points");
+  const [authTab, setAuthTab] = useState<AuthTabKey>("signin");
 
   // Resolve the account: server prefers the session, falls back to a
   // client-passed cust_XXXXX. `passedId` is only meaningful when signed
@@ -171,20 +185,122 @@ export function AccountView({
   if (phase === "signed-out") {
     return (
       <div className="mt-8 max-w-md">
-        <p className="text-ink/70">Sign in to see your points and order history.</p>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <Link
-            href="/product-a/login"
-            className="min-h-[44px] flex-1 rounded-md bg-accent px-6 py-2 text-center font-medium text-paper transition-transform duration-150 hover:scale-105"
+        <p className="text-ink/70">
+          Sign in to see your points and order history — or create an account to start earning.
+        </p>
+
+        <div className="mt-6">
+          <div
+            role="tablist"
+            aria-label="Sign in or create an account"
+            className="flex items-center gap-2 border-b border-ink/10"
           >
-            Sign in
-          </Link>
-          <Link
-            href="/product-a/signup"
-            className="min-h-[44px] flex-1 rounded-md border border-ink/20 px-6 py-2 text-center font-medium text-ink transition-transform duration-150 hover:scale-105 hover:border-ink/40"
-          >
-            Create account
-          </Link>
+            {AUTH_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={authTab === tab.key}
+                onClick={() => setAuthTab(tab.key)}
+                className={`min-h-[52px] flex-1 whitespace-nowrap border-b-2 px-4 py-4 text-base font-medium transition-transform duration-150 hover:scale-105 ${
+                  authTab === tab.key
+                    ? "border-accent text-ink"
+                    : "border-transparent text-ink/60 hover:text-ink"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {authTab === "signin" ? (
+            <form
+              action={customerSignInAction}
+              role="tabpanel"
+              aria-label="Sign in"
+              className="mt-6 space-y-4"
+            >
+              <div>
+                <label htmlFor="signin_email" className="block text-sm font-medium text-ink">
+                  Email
+                </label>
+                <input
+                  id="signin_email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+                />
+              </div>
+              <div>
+                <label htmlFor="signin_password" className="block text-sm font-medium text-ink">
+                  Password
+                </label>
+                <input
+                  id="signin_password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+                />
+              </div>
+              <SubmitButton
+                pendingLabel="Signing in…"
+                className="min-h-[44px] w-full rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+              >
+                Sign in
+              </SubmitButton>
+            </form>
+          ) : (
+            <form
+              action={customerSignUpAction}
+              role="tabpanel"
+              aria-label="Create account"
+              className="mt-6 space-y-4"
+            >
+              <ClaimIdField />
+              <div>
+                <label htmlFor="signup_email" className="block text-sm font-medium text-ink">
+                  Email
+                </label>
+                <input
+                  id="signup_email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  placeholder="you@example.com"
+                  className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+                />
+              </div>
+              <div>
+                <label htmlFor="signup_password" className="block text-sm font-medium text-ink">
+                  Password
+                </label>
+                <input
+                  id="signup_password"
+                  name="password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={8}
+                  placeholder="At least 8 characters"
+                  className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+                />
+              </div>
+              <SubmitButton
+                pendingLabel="Creating your account…"
+                className="min-h-[44px] w-full rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+              >
+                Create account
+              </SubmitButton>
+              <p className="text-xs text-ink/50">
+                Earn a point for every $1 you pre-order and keep your pickups in one place.
+              </p>
+            </form>
+          )}
         </div>
 
         <div className="my-8 flex items-center gap-3 text-xs text-ink/40">
