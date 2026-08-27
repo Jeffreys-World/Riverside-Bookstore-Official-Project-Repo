@@ -361,35 +361,35 @@ screens inherit the same classes — consistently un-guarded. One 3-line `@layer
 ## Implementation Tasks
 Synthesized from this review's findings. Run with Claude Code; checkbox as you ship.
 
-- [ ] **T1 (P1, human: ~1h / CC: ~10min)** — schema — `0034_customer_auth.sql`: `customers.auth_user_id` + `email` (nullable, unique) + `get_or_create_my_customer(p_claim)` SECURITY DEFINER reading `auth.uid()`/`auth.jwt()` internally, granted to `authenticated`, revoked from `anon`/`public`
+- [x] **T1 (P1, human: ~1h / CC: ~10min)** — schema — `0034_customer_auth.sql`: `customers.auth_user_id` + `email` (nullable, unique) + `get_or_create_my_customer(p_claim)` SECURITY DEFINER reading `auth.uid()`/`auth.jwt()` internally, granted to `authenticated`, revoked from `anon`/`public`
   - Surfaced by: Architecture #4 + outside-voice #3/#4/#5
   - Files: `supabase/migrations/0034_customer_auth.sql`, `types/supabase.ts`
   - Verify: `npx supabase gen types typescript --local` clean; call the RPC as anon → denied
-- [ ] **T2 (P1, human: ~45min / CC: ~8min)** — lib — `lib/customer-auth.ts`: `validatePassedId` (pure), `resolveCustomerId` (normal server client), `authErrorMessage` (pure, prefer `error.code`) + unit tests
+- [x] **T2 (P1, human: ~45min / CC: ~8min)** — lib — `lib/customer-auth.ts`: `validatePassedId` (pure), `resolveCustomerId` (normal server client), `authErrorMessage` (pure, prefer `error.code`) + unit tests
   - Surfaced by: Test review; learning `use-server-files-only-export-async`
   - Files: `lib/customer-auth.ts`, `lib/customer-auth.test.ts`
   - Verify: `npx vitest run lib/customer-auth.test.ts`
-- [ ] **T3 (P1, human: ~2.5h / CC: ~22min)** — product-a auth — 3 server actions + `getMyCustomerIdAction`; rewrite `/signup`; new `/login` (clone `/product-b/sign-in`); form-action POSTs, `useFormStatus`, `?next=`, `signUp` null-session guard + **D1 email-pending state**, auto-claim + **D2 `?welcome=claimed` redirect**
+- [x] **T3 (P1, human: ~2.5h / CC: ~22min)** — product-a auth — 3 server actions + `getMyCustomerIdAction`; rewrite `/signup`; new `/login` (clone `/product-b/sign-in`); form-action POSTs, `useFormStatus`, `?next=`, `signUp` null-session guard + **D1 email-pending state**, auto-claim + **D2 `?welcome=claimed` redirect**
   - Surfaced by: outside-voice #6/#11/#12; design D1/D2
   - Files: `app/product-a/actions.ts`, `app/product-a/signup/page.tsx`, `app/product-a/login/page.tsx`
   - Verify: manual — signup→account, logout, login, already-registered email, pending state (confirmations on), claim banner
-- [ ] **T4 (P1, human: ~2h / CC: ~17min)** — product-a account — `getAccountAction` session-first (returns `customerId`+`email`); `account-view` session-aware per **D3** (Sign in / Create account primary, `<details>` ID-recovery secondary, "Signed in as {email}" + `cust_` underneath, Log out); `account/page.tsx` dynamic + `initialSignedIn` + **D2 claimed banner**
+- [x] **T4 (P1, human: ~2h / CC: ~17min)** — product-a account — `getAccountAction` session-first (returns `customerId`+`email`); `account-view` session-aware per **D3** (Sign in / Create account primary, `<details>` ID-recovery secondary, "Signed in as {email}" + `cust_` underneath, Log out); `account/page.tsx` dynamic + `initialSignedIn` + **D2 claimed banner**
   - Surfaced by: Architecture A2/A4 + outside-voice #1/#9; design D2/D3
   - Files: `app/product-a/actions.ts`, `app/product-a/account/account-view.tsx`, `app/product-a/account/page.tsx`
   - Verify: manual test 2 (auto-claim preserves points), logged-out layout (one primary path), fallback loader still works
-- [ ] **T5 (P2, human: ~1h / CC: ~12min)** — product-a polish — session-gated hide of the `customer_id` field at checkout + event-rsvp, replaced by **D4** "Reserving/RSVPing as {email}" line + hidden input; sync via `getMyCustomerIdAction` + `saveCustomerId`; `?next=` on signup links. `checkoutAction` / `rsvpToEventAction` untouched
+- [x] **T5 (P2, human: ~1h / CC: ~12min)** — product-a polish — session-gated hide of the `customer_id` field at checkout + event-rsvp, replaced by **D4** "Reserving/RSVPing as {email}" line + hidden input; sync via `getMyCustomerIdAction` + `saveCustomerId`; `?next=` on signup links. `checkoutAction` / `rsvpToEventAction` untouched
   - Surfaced by: re-scope (additive logged-in polish); design D4
   - Files: `app/product-a/checkout/page.tsx`, `app/product-a/events/[id]/event-rsvp.tsx`
   - Verify: logged-out checkout byte-identical to before; logged-in shows the email line, order still attributed
-- [ ] **T6 (P2, human: ~45min / CC: ~10min)** — chrome — `site-nav` `useCustomerSession`; `product-b/page.tsx` + `signInAction` drop `signOut()` on non-staff, redirect to `/product-a`
+- [x] **T6 (P2, human: ~45min / CC: ~10min)** — chrome — `site-nav` `useCustomerSession`; `product-b/page.tsx` + `signInAction` drop `signOut()` on non-staff, redirect to `/product-a`
   - Surfaced by: Architecture A1 + outside-voice (stranded session)
   - Files: `app/site-nav.tsx`, `app/product-b/page.tsx`, `app/product-b/actions.ts`
   - Verify: manual test 9 — customer clicks Staff Account, still logged in on Product A
-- [ ] **T7 (P2, human: ~30min / CC: ~5min)** — contract — `types/schema.ts` `Customer` + `customerCredentialsSchema` + regression test; `CLAUDE.md` data contract; regen `types/supabase.ts`
+- [x] **T7 (P2, human: ~30min / CC: ~5min)** — contract — `types/schema.ts` `Customer` + `customerCredentialsSchema` + regression test; `CLAUDE.md` data contract; regen `types/supabase.ts`
   - Surfaced by: strict data contract gains 2 columns
   - Files: `types/schema.ts`, `types/schema.regression-2.test.ts`, `CLAUDE.md`
   - Verify: `npx tsc --noEmit`, `npx vitest run`
-- [ ] **T8 (P3, human: ~20min / CC: ~5min)** — demo — `scripts/backfill-customer-demo.mjs`: auth user for `cust_demo01`
+- [x] **T8 (P3, human: ~20min / CC: ~5min)** — demo — `scripts/backfill-customer-demo.mjs`: auth user for `cust_demo01`
   - Surfaced by: outside-voice #13
   - Files: `scripts/backfill-customer-demo.mjs`
   - Verify: log in as the demo account, see its seeded order history
