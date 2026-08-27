@@ -1,19 +1,27 @@
 "use server";
 
 /**
- * Product A's Server Actions. Mutations (checkoutAction,
- * signUpCustomerAction) go through getServiceRoleClient() per
- * lib/supabase.ts's rule, since neither create_preorder nor
- * create_customer is anon-grantable — the browser never calls Supabase
- * directly for those, matching app/api/live/execute-tool/route.ts's
- * pattern for the same create_preorder RPC. Reads (getAccountAction) use
- * the regular server client instead, since the RPCs they call are already
- * anon-safe.
+ * Product A's Server Actions. Mutations (checkoutAction) go through
+ * getServiceRoleClient() per lib/supabase.ts's rule, since create_preorder
+ * isn't anon-grantable — the browser never calls Supabase directly for
+ * those, matching app/api/live/execute-tool/route.ts's pattern for the
+ * same create_preorder RPC. Reads (getAccountAction) and the customer
+ * auth flow use the regular server client instead.
  */
 
+import { redirect } from "next/navigation";
 import { getServerClient, getServiceRoleClient } from "@/lib/supabase-server";
-import { CUSTOMER_ID_REGEX, checkoutRequestSchema } from "@/types/schema";
+import { CUSTOMER_ID_REGEX, checkoutRequestSchema, customerCredentialsSchema } from "@/types/schema";
+import { authErrorMessage, validatePassedId } from "@/lib/customer-auth";
+import { resolveCustomer, resolveCustomerId } from "@/lib/customer-session";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+// Only allow same-site redirects back into Product A after sign-in /
+// sign-up, so a crafted ?next= can't bounce a freshly-authenticated
+// visitor to an external URL.
+function sanitizeNext(next: string): string {
+  return /^\/product-a(\/|\?|$)/.test(next) ? next : "";
+}
 
 async function placeSingleOrder(
   supabase: SupabaseClient,
@@ -107,29 +115,89 @@ export async function checkoutAction(input: unknown): Promise<CheckoutResult> {
   return { ok: true, lines, rewardPoints: typeof balance === "number" ? balance : null };
 }
 
-export type SignUpCustomerResult =
-  | { ok: true; customerId: string }
-  | { ok: false; message: string };
+// ---------------------------------------------------------------------------
+// Customer auth (0034_customer_auth.sql). Email + password via Supabase
+// Auth — the same GoTrue machinery the staff side already uses
+// (app/product-b/actions.ts), minus the staff_users gate. These run
+// through the normal server client so the session cookie is written from
+// a real Server Action (getServerClient's set() only works here, not from
+// a Server Component). All four redirect rather than return — matching
+// signInAction on the staff side.
+// ---------------------------------------------------------------------------
 
 /**
- * Mints a fresh cust_XXXXX id via create_customer() (0010_customer_signup.sql)
- * so a real visitor — not just the seeded cust_demo01 — can place a
- * pre-order and start earning stamps. Same server-only mutation pattern as
- * createPreorderAction: the RPC is not granted to anon, so this must run
- * through the service-role client, never called directly from the browser.
+ * Turn a Supabase Auth session into a customer_id for a client component
+ * (checkout, events RSVP, account) that can't call resolveCustomerId
+ * directly (it imports next/headers). Returns null when signed out or for
+ * a staff session.
  */
-export async function signUpCustomerAction(): Promise<SignUpCustomerResult> {
-  const supabase = getServiceRoleClient();
-  const { data, error } = await supabase.rpc("create_customer");
+export async function getMyCustomerIdAction(): Promise<string | null> {
+  return resolveCustomerId();
+}
 
-  if (error || !data) {
-    return {
-      ok: false,
-      message: "Something went wrong creating your account. Please try again.",
-    };
+export async function customerSignInAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const next = sanitizeNext(String(formData.get("next") ?? ""));
+  const nextQS = next ? `&next=${encodeURIComponent(next)}` : "";
+
+  const supabase = getServerClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    redirect(`/product-a/login?error=${encodeURIComponent(authErrorMessage(error))}${nextQS}`);
+  }
+  redirect(next || "/product-a/account");
+}
+
+export async function customerSignOutAction() {
+  const supabase = getServerClient();
+  await supabase.auth.signOut();
+  redirect("/product-a");
+}
+
+/**
+ * Real sign-up. supabase.auth.signUp mints the auth user; resolveCustomerId
+ * then links a customers row — adopting an unclaimed localStorage
+ * cust_XXXXX (claim_id, mirrored into a hidden field by the signup page)
+ * so a returning customer keeps their points + order history. If the
+ * project has "Confirm email" on, signUp returns no session and we send
+ * the visitor to the pending state instead of a broken-looking account
+ * page.
+ */
+export async function customerSignUpAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const next = sanitizeNext(String(formData.get("next") ?? ""));
+  const claimId = validatePassedId(String(formData.get("claim_id") ?? ""));
+  const nextQS = next ? `&next=${encodeURIComponent(next)}` : "";
+
+  const parsed = customerCredentialsSchema.safeParse({ email, password });
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message ?? "Check your email and password.";
+    redirect(`/product-a/signup?error=${encodeURIComponent(message)}${nextQS}`);
   }
 
-  return { ok: true, customerId: data as string };
+  const supabase = getServerClient();
+  const { data, error } = await supabase.auth.signUp({
+    email: parsed.data.email,
+    password: parsed.data.password,
+  });
+  if (error) {
+    redirect(`/product-a/signup?error=${encodeURIComponent(authErrorMessage(error))}${nextQS}`);
+  }
+  if (!data.session) {
+    redirect(`/product-a/signup?pending=1&email=${encodeURIComponent(parsed.data.email)}`);
+  }
+
+  const customerId = await resolveCustomerId({ claimId });
+  const claimed = Boolean(claimId) && customerId === claimId;
+
+  // The "welcome back, we linked your account" banner only makes sense on
+  // the account page; a ?next= redirect (mid-checkout) skips it.
+  if (!next && claimed) {
+    redirect("/product-a/account?welcome=claimed");
+  }
+  redirect(next || "/product-a/account");
 }
 
 export type RedeemBlindDateResult =
@@ -140,9 +208,10 @@ export type RedeemBlindDateResult =
  * "Blind Date with a Book" — spends BLIND_DATE_POINTS_COST points
  * (types/schema.ts) on a random in-stock title via redeem_blind_date()
  * (0030_loyalty_program_expansion.sql), which mints a real preorder. Same
- * server-only mutation pattern as checkoutAction/signUpCustomerAction:
- * the RPC isn't granted to anon, so this must run through the
- * service-role client.
+ * server-only mutation pattern as checkoutAction: the RPC isn't granted
+ * to anon, so this must run through the service-role client. The
+ * customerId here comes from account-view's activeIdRef, which is the
+ * session-resolved id when signed in.
  */
 export async function redeemBlindDateAction(customerId: string): Promise<RedeemBlindDateResult> {
   if (!CUSTOMER_ID_REGEX.test(customerId)) {
@@ -207,21 +276,24 @@ export interface AccountOrder {
 }
 
 export type GetAccountResult =
-  | { ok: true; rewardPoints: number; orders: AccountOrder[] }
+  | { ok: true; customerId: string; email: string | null; rewardPoints: number; orders: AccountOrder[] }
   | { ok: false; message: string };
 
 /**
- * Product A's "My Account" page. Both RPCs (get_loyalty_balance,
- * get_customer_orders — 0013_customer_order_history.sql) are anon-grantable
- * reads gated on already knowing the exact customer_id, so this reads
- * through the regular server client, not the service-role one — same
- * access level a direct browser call would have, just kept server-side
- * for consistency with the rest of this file.
+ * Product A's "My Account" page. Prefers the Supabase Auth session
+ * (0034_customer_auth.sql); falls back to a client-passed cust_XXXXX from
+ * localStorage when signed out (cust_demo01, mid-transition visitors).
+ * Both underlying RPCs (get_loyalty_balance, get_customer_orders —
+ * 0013_customer_order_history.sql) are anon-grantable reads gated on
+ * already knowing the exact customer_id, so this stays on the regular
+ * server client, not the service-role one.
  */
-export async function getAccountAction(customerId: string): Promise<GetAccountResult> {
-  if (!CUSTOMER_ID_REGEX.test(customerId)) {
-    return { ok: false, message: "Enter a valid customer ID (cust_XXXXX)." };
+export async function getAccountAction(passedId?: string): Promise<GetAccountResult> {
+  const resolved = await resolveCustomer({ passedId });
+  if (!resolved) {
+    return { ok: false, message: "Sign in, or enter your customer ID, to see your account." };
   }
+  const { customerId, email } = resolved;
 
   const supabase = getServerClient();
   const [{ data: balance, error: balanceError }, { data: rawOrders, error: ordersError }] =
@@ -237,6 +309,8 @@ export async function getAccountAction(customerId: string): Promise<GetAccountRe
     return { ok: false, message: "Something went wrong loading your account. Please try again." };
   }
   if (balance === null) {
+    // A session-resolved id always has a row, so this only trips on a
+    // typed customer ID that doesn't exist.
     return { ok: false, message: "We couldn't find that customer ID." };
   }
 
@@ -265,6 +339,8 @@ export async function getAccountAction(customerId: string): Promise<GetAccountRe
 
   return {
     ok: true,
+    customerId,
+    email,
     rewardPoints: balance as number,
     orders: orders.map((o) => ({
       ...o,

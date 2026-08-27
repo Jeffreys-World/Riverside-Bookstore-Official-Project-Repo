@@ -1,72 +1,57 @@
-"use client";
+import Link from "next/link";
+import { customerSignUpAction } from "../actions";
+import { SubmitButton } from "@/components/submit-button";
+import { ClaimIdField } from "./claim-id-field";
 
 /**
- * Dedicated customer registration screen. Product A has no real customer
- * auth (see lib/customer-id-storage.ts and CLAUDE.md's data contract —
- * `customers` has no email/password column), so email + password here are
- * collected for a real-feeling sign-up flow but not persisted or checked;
- * submitting mints a fresh cust_XXXXX id via create_customer()
- * (signUpCustomerAction, unchanged) the same way the old inline "New
- * customer? Sign up" button on the catalog page did. A returning visit
- * still works through the existing localStorage-remembered id, same as
- * today — this screen doesn't change that model, just gives sign-up its
- * own page per the spec.
+ * Customer registration. Real email + password via Supabase Auth
+ * (0034_customer_auth.sql) — signUp mints the auth user, then
+ * customerSignUpAction links a customers row, adopting an unclaimed
+ * localStorage cust_XXXXX (via <ClaimIdField>) so a returning customer
+ * keeps their loyalty points and order history.
+ *
+ * `?pending=1` is the state shown when the Supabase project has "Confirm
+ * email" turned on: signUp succeeds but returns no session, so the
+ * customer has to click the emailed link before signing in. With
+ * confirmations off (recommended for this pay-in-person shop) that state
+ * is never reached — signup redirects straight to the account page.
  */
+export default function SignUpPage({
+  searchParams,
+}: {
+  searchParams: { error?: string; pending?: string; email?: string; next?: string };
+}) {
+  const next = searchParams.next ?? "";
 
-import Link from "next/link";
-import { useState, type FormEvent } from "react";
-import { saveCustomerId } from "@/lib/customer-id-storage";
-import { signUpCustomerAction } from "../actions";
-
-export default function SignUpPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<
-    { kind: "success"; customerId: string } | { kind: "error"; message: string } | null
-  >(null);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (submitting) return;
-    setSubmitting(true);
-    setResult(null);
-    try {
-      const res = await signUpCustomerAction();
-      if (res.ok) {
-        saveCustomerId(res.customerId);
-        setResult({ kind: "success", customerId: res.customerId });
-      } else {
-        setResult({ kind: "error", message: res.message });
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  if (result?.kind === "success") {
+  if (searchParams.pending) {
     return (
       <main className="mx-auto max-w-md px-6 py-16">
-        <h1 className="font-serif text-3xl text-ink">Welcome to Riverside Books</h1>
-        <p className="mt-4 text-ink/70">Your account is ready. Your loyalty ID is:</p>
-        <p className="mt-2 rounded-md border border-ink/10 bg-surface px-4 py-3 font-mono text-lg text-ink">
-          {result.customerId}
+        <h1 className="font-serif text-3xl text-ink">Check your email</h1>
+        <p className="mt-4 text-ink/70">
+          We sent a confirmation link
+          {searchParams.email ? (
+            <>
+              {" "}
+              to <span className="font-medium text-ink">{searchParams.email}</span>
+            </>
+          ) : null}
+          . Open it to finish setting up your account, then sign in.
         </p>
         <p className="mt-2 text-sm text-ink/60">
-          We&apos;ve saved this to your browser, so you won&apos;t need to re-enter it here next time.
+          The link expires in 24 hours. No email? Check your spam folder.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
-            href="/product-a"
+            href="/product-a/login"
             className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105"
           >
-            Start browsing
+            Go to sign in
           </Link>
           <Link
-            href="/product-a/account"
+            href="/product-a/signup"
             className="min-h-[44px] rounded-md border border-ink/20 px-6 py-2 font-medium text-ink transition-transform duration-150 hover:scale-105"
           >
-            View my account
+            Use a different email
           </Link>
         </div>
       </main>
@@ -77,20 +62,22 @@ export default function SignUpPage() {
     <main className="mx-auto max-w-md px-6 py-16">
       <h1 className="font-serif text-3xl text-ink">Create your account</h1>
       <p className="mt-2 text-ink/70">
-        Sign up to earn a loyalty stamp with every pre-order and track your pickups.
+        Sign up to earn a point for every $1 you pre-order and track your pickups.
       </p>
 
-      <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">
+      <form action={customerSignUpAction} className="mt-8 space-y-5">
+        {next && <input type="hidden" name="next" value={next} />}
+        <ClaimIdField />
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-ink">
             Email
           </label>
           <input
             id="email"
+            name="email"
             type="email"
+            autoComplete="email"
             required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
             className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
           />
@@ -101,37 +88,40 @@ export default function SignUpPage() {
           </label>
           <input
             id="password"
+            name="password"
             type="password"
+            autoComplete="new-password"
             required
             minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
             placeholder="At least 8 characters"
             className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={submitting}
+        <SubmitButton
+          pendingLabel="Creating your account…"
           className="min-h-[44px] w-full rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
         >
-          {submitting ? "Creating your account…" : "Create account"}
-        </button>
+          Create account
+        </SubmitButton>
 
-        <div role="status" aria-live="polite" className="min-h-[1.5rem]">
-          {result?.kind === "error" && (
-            <p className="rounded-md border border-claret/30 bg-claret-soft p-3 text-claret">
-              {result.message}
-            </p>
-          )}
-        </div>
+        {searchParams.error && (
+          <p
+            role="alert"
+            className="rounded-md border border-claret/30 bg-claret-soft p-3 text-sm text-claret"
+          >
+            {searchParams.error}
+          </p>
+        )}
       </form>
 
       <p className="mt-6 text-sm text-ink/60">
         Already have an account?{" "}
-        <Link href="/product-a/account" className="text-accent underline-offset-2 hover:underline">
-          Go to your account
+        <Link
+          href={next ? `/product-a/login?next=${encodeURIComponent(next)}` : "/product-a/login"}
+          className="text-accent underline-offset-2 hover:underline"
+        >
+          Sign in
         </Link>
       </p>
     </main>

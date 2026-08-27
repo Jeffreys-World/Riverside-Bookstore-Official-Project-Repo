@@ -19,19 +19,35 @@
 import { getServerClient } from "@/lib/supabase-server";
 import { validatePassedId } from "@/lib/customer-auth";
 
-export async function resolveCustomerId(opts?: {
+export interface ResolvedCustomer {
+  customerId: string;
+  /** null when resolved from the localStorage fallback (no session). */
+  email: string | null;
+}
+
+interface ResolveOpts {
   /** A client-supplied cust_XXXXX (localStorage). Only used when there is no session. */
   passedId?: string | null;
   /** On first sign-up: an unclaimed legacy cust_XXXXX to adopt so the customer keeps their points + history. */
   claimId?: string | null;
-}): Promise<string | null> {
+}
+
+/**
+ * One auth.getUser() round trip, then either the localStorage fallback
+ * (no session) or get_or_create_my_customer (session). Returns null when
+ * the visitor has neither a valid session-linked customer nor a valid
+ * passed id, and for a staff session (the RPC refuses to mint a customer
+ * row for staff).
+ */
+export async function resolveCustomer(opts?: ResolveOpts): Promise<ResolvedCustomer | null> {
   const supabase = getServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return validatePassedId(opts?.passedId);
+    const id = validatePassedId(opts?.passedId);
+    return id ? { customerId: id, email: null } : null;
   }
 
   const { data, error } = await supabase.rpc("get_or_create_my_customer", {
@@ -39,14 +55,18 @@ export async function resolveCustomerId(opts?: {
   });
 
   if (error) {
-    // Best-effort: a DB blip here should surface to the caller as
-    // "signed out" (null) rather than throw. One string arg only —
-    // multi-arg console.error crashes this machine's VSCode extension in
-    // Server Actions.
-    console.error(`resolveCustomerId: get_or_create_my_customer failed: ${error.message}`);
+    // A DB blip here surfaces to the caller as "signed out" (null) rather
+    // than throwing. One string arg only — multi-arg console.error
+    // crashes this machine's VSCode extension in Server Actions.
+    console.error(`resolveCustomer: get_or_create_my_customer failed: ${error.message}`);
     return null;
   }
 
-  // null = staff session (the RPC refuses to mint a customer row for staff).
-  return (data as string | null) ?? null;
+  const customerId = (data as string | null) ?? null;
+  return customerId ? { customerId, email: user.email ?? null } : null;
+}
+
+/** Thin wrapper for callers that only need the id (checkout sync, sign-up claim). */
+export async function resolveCustomerId(opts?: ResolveOpts): Promise<string | null> {
+  return (await resolveCustomer(opts))?.customerId ?? null;
 }

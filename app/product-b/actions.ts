@@ -17,13 +17,14 @@ export async function signInAction(formData: FormData) {
   }
 
   // Valid Supabase Auth credentials aren't the same as staff — 0018's
-  // staff_users/is_staff() is the actual authorization check. A
-  // customer account (once real customer auth exists) could otherwise
-  // sign in here and land on the staff dashboard's UI, even though every
-  // staff-only mutation/read would then fail at the RLS layer.
+  // staff_users/is_staff() is the actual authorization check. A customer
+  // account (real customer auth landed in 0034) can sign in here with
+  // valid credentials; every staff-only mutation/read still fails at the
+  // RLS layer, and the dashboard page re-checks is_staff() on load, so
+  // there's no need to also destroy the session — that would log a
+  // customer out of Product A (one shared auth cookie).
   const { data: isStaff, error: staffCheckError } = await supabase.rpc("is_staff");
   if (staffCheckError || !isStaff) {
-    await supabase.auth.signOut();
     redirect(`/product-b/sign-in?error=${encodeURIComponent("This account isn't a staff account.")}`);
   }
 

@@ -16,6 +16,11 @@ All database queries and mutations MUST align with the exact shared PostgreSQL s
 
 - `customer_id`: string (Format: cust_XXXXX)
 - `signup_date`: string (Format: YYYY-MM-DD)
+- `customers.auth_user_id`: uuid | null — FK to `auth.users`, added in `0034_customer_auth.sql`.
+  null = a pre-auth / seeded row (e.g. `cust_demo01`) still reached via the localStorage
+  `customer_id` fallback, not a real email/password login. Set by `get_or_create_my_customer()`.
+- `customers.email`: string | null — unique. The address the customer signed up with; null for
+  pre-auth rows. Display-only (shown as "signed in as …"); auth itself lives in `auth.users`.
 - `ISBN`: string (13-digit identifier)
 - Author Events: timestamptz
 - Ticket ID: string (Format: tkt_XXXXX)

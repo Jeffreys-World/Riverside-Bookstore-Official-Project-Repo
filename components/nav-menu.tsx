@@ -64,18 +64,27 @@ const TRIGGER_CLASS = (active: boolean) =>
   }`;
 
 export interface NavMenuItem {
-  href: string;
   label: string;
+  /** A link destination, OR... */
+  href?: string;
+  /** ...a server action to run (e.g. sign out). Rendered as a form/button menu item. */
+  action?: () => void | Promise<void>;
 }
+
+const MENU_ITEM_CLASS =
+  "block w-full scale-100 px-4 py-2 text-left text-sm text-ink transition-transform duration-150 hover:scale-105 hover:bg-ink/5";
 
 export function NavMenu({
   label,
   active,
   items,
+  header,
 }: {
   label: string;
   active: boolean;
   items: NavMenuItem[];
+  /** Optional non-interactive line at the top of the menu (e.g. the signed-in email). */
+  header?: string;
 }) {
   const { open, setOpen, containerRef } = useDropdown();
 
@@ -96,17 +105,28 @@ export function NavMenu({
           aria-label={label}
           className="absolute right-0 top-full z-40 mt-1 min-w-[13rem] rounded-md border border-ink/10 bg-surface py-1 shadow-lg"
         >
-          {items.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              role="menuitem"
-              onClick={() => setOpen(false)}
-              className="block scale-100 px-4 py-2 text-sm text-ink transition-transform duration-150 hover:scale-105 hover:bg-ink/5"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {header && (
+            <p className="truncate border-b border-ink/10 px-4 py-2 text-xs text-ink/40">{header}</p>
+          )}
+          {items.map((item) =>
+            item.action ? (
+              <form key={item.label} action={item.action} onSubmit={() => setOpen(false)}>
+                <button type="submit" role="menuitem" className={MENU_ITEM_CLASS}>
+                  {item.label}
+                </button>
+              </form>
+            ) : (
+              <Link
+                key={item.href ?? item.label}
+                href={item.href ?? "#"}
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className={MENU_ITEM_CLASS}
+              >
+                {item.label}
+              </Link>
+            )
+          )}
         </div>
       )}
     </div>

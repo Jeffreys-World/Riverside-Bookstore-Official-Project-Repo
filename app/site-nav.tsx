@@ -2,29 +2,61 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useCart } from "@/components/cart-provider";
-import { NavMenu, NavPreviewMenu } from "@/components/nav-menu";
+import { NavMenu, NavPreviewMenu, type NavMenuItem } from "@/components/nav-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
-
-// "My Account" gateway: Customer Account (order history + loyalty) vs.
-// Staff Account (inventory + marketing workspace) — see
-// app/product-b/staff-nav.tsx for the staff-side tabs between those two.
-const ACCOUNT_ITEMS = [
-  { href: "/product-a/account", label: "Customer Account" },
-  { href: "/product-b", label: "Staff Account" },
-] as const;
+import { getBrowserClient } from "@/lib/supabase-browser";
+import { customerSignOutAction } from "./product-a/actions";
 
 const SUPPORT_ITEMS = [
   { href: "/product-c", label: "FAQ & Chatbot" },
   { href: "/product-c/contact", label: "Contact Us" },
 ] as const;
 
+// Lightweight "is a customer signed in, and what's their email" for the
+// header only — a plain auth-state listener, no realtime socket. The
+// customer_id itself is resolved server-side where it's needed
+// (getMyCustomerIdAction); the nav only needs the email for the label.
+function useCustomerEmail(): string | null {
+  const [email, setEmail] = useState<string | null>(null);
+  useEffect(() => {
+    const supabase = getBrowserClient();
+    supabase.auth.getSession().then(({ data }) => setEmail(data.session?.user.email ?? null));
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setEmail(session?.user.email ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+  return email;
+}
+
 export function SiteNav() {
   const pathname = usePathname() ?? "";
   const { count, toggle } = useCart();
+  const customerEmail = useCustomerEmail();
+
+  // "My Account" gateway. Staff Account (inventory + marketing workspace)
+  // is always listed; the customer side flips between sign-in/sign-up and
+  // account/log-out on the session.
+  const accountItems: NavMenuItem[] = customerEmail
+    ? [
+        { href: "/product-a/account", label: "Your account" },
+        { label: "Log out", action: customerSignOutAction },
+        { href: "/product-b", label: "Staff Account" },
+      ]
+    : [
+        { href: "/product-a/login", label: "Sign in" },
+        { href: "/product-a/signup", label: "Create account" },
+        { href: "/product-b", label: "Staff Account" },
+      ];
 
   const accountActive =
     pathname.startsWith("/product-a/account") ||
+    pathname.startsWith("/product-a/login") ||
+    pathname.startsWith("/product-a/signup") ||
     pathname.startsWith("/product-b") ||
     pathname.startsWith("/product-d");
   const supportActive = pathname.startsWith("/product-c");
@@ -63,7 +95,12 @@ export function SiteNav() {
 
   const utilityLinks = (
     <>
-      <NavMenu label="My Account" active={accountActive} items={[...ACCOUNT_ITEMS]} />
+      <NavMenu
+        label="My Account"
+        active={accountActive}
+        header={customerEmail ?? undefined}
+        items={accountItems}
+      />
       <NavMenu label="Support Center" active={supportActive} items={[...SUPPORT_ITEMS]} />
       <ThemeToggle />
       <button

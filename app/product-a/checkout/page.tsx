@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useCart } from "@/components/cart-provider";
-import { checkoutAction, type CheckoutLineResult } from "../actions";
+import { checkoutAction, getMyCustomerIdAction, type CheckoutLineResult } from "../actions";
+import { getBrowserClient } from "@/lib/supabase-browser";
 import { saveCustomerId, loadCustomerId } from "@/lib/customer-id-storage";
 import { CUSTOMER_ID_REGEX, PICKUP_LOCATION, PICKUP_WINDOWS } from "@/types/schema";
 
@@ -18,6 +19,7 @@ function todayISODate(): string {
 export default function CheckoutPage() {
   const { items, subtotal, removeItem } = useCart();
   const [customerId, setCustomerId] = useState(() => loadCustomerId());
+  const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [pickupDate, setPickupDate] = useState(todayISODate());
   const [pickupWindow, setPickupWindow] = useState<string>(PICKUP_WINDOWS[0]);
   const [submitting, setSubmitting] = useState(false);
@@ -28,6 +30,28 @@ export default function CheckoutPage() {
   >(null);
 
   const minDate = useMemo(() => todayISODate(), []);
+
+  // If the visitor is signed in (0034_customer_auth.sql), pull their
+  // customer_id from the session and drop the "Customer ID" field — the
+  // pre-order is attributed to the session, not a typed id. Keeps
+  // localStorage in sync so the rest of the pre-auth flow (which still
+  // reads loadCustomerId) keeps working unchanged.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await getBrowserClient().auth.getSession();
+      const email = data.session?.user.email ?? null;
+      if (cancelled || !email) return;
+      const id = await getMyCustomerIdAction();
+      if (cancelled || !id) return;
+      saveCustomerId(id);
+      setCustomerId(id);
+      setSignedInEmail(email);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -167,23 +191,32 @@ export default function CheckoutPage() {
       </section>
 
       <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-6">
-        <div>
-          <label htmlFor="customer_id" className="block text-sm font-medium text-ink">
-            Customer ID
-          </label>
-          <input
-            id="customer_id"
-            type="text"
-            placeholder="cust_XXXXX"
-            value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
-            required
-            className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
-          />
-          <Link href="/product-a/signup" className="mt-1 inline-block text-sm text-accent underline-offset-2 transition-transform duration-150 hover:scale-105 hover:underline">
-            New customer? Create an account
-          </Link>
-        </div>
+        {signedInEmail ? (
+          <p className="text-sm text-ink/60">
+            Reserving as <span className="text-ink">{signedInEmail}</span>.
+          </p>
+        ) : (
+          <div>
+            <label htmlFor="customer_id" className="block text-sm font-medium text-ink">
+              Customer ID
+            </label>
+            <input
+              id="customer_id"
+              type="text"
+              placeholder="cust_XXXXX"
+              value={customerId}
+              onChange={(e) => setCustomerId(e.target.value)}
+              required
+              className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
+            />
+            <Link
+              href="/product-a/signup?next=/product-a/checkout"
+              className="mt-1 inline-block text-sm text-accent underline-offset-2 transition-transform duration-150 hover:scale-105 hover:underline"
+            >
+              New customer? Create an account
+            </Link>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>

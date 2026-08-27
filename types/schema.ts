@@ -64,7 +64,22 @@ export interface Customer {
   customer_id: string; // cust_XXXXX
   signup_date: string; // YYYY-MM-DD
   reward_points: number;
+  // 0034_customer_auth.sql — both nullable. null auth_user_id = a
+  // pre-auth / seeded row (e.g. cust_demo01) still reached via the
+  // localStorage cust_XXXXX fallback path, not a real login yet.
+  auth_user_id: string | null; // uuid, FK to auth.users
+  email: string | null;
 }
+
+// customerCredentialsSchema — Product A's email + password sign-up / login
+// (app/product-a/actions.ts). Supabase Auth re-validates server-side; this
+// is the fast, friendly first check, same pattern as every other action's
+// zod gate.
+export const customerCredentialsSchema = z.object({
+  email: z.string().trim().email("Enter a valid email address."),
+  password: z.string().min(8, "Password must be at least 8 characters."),
+});
+export type CustomerCredentials = z.infer<typeof customerCredentialsSchema>;
 
 export interface Book {
   ISBN: string; // ISBN-13
