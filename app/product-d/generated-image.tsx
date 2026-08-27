@@ -121,6 +121,8 @@ export function GeneratedImage({ headline, subtitle }: { headline: string; subti
         ref={canvasRef}
         width={SIZE}
         height={SIZE}
+        role="img"
+        aria-label={`Social post graphic: ${headline}${subtitle ? ` — ${subtitle}` : ""}`}
         className="mt-3 aspect-square w-full max-w-xs rounded-md"
       />
       <button

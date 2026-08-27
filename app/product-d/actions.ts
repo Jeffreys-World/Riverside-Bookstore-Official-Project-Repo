@@ -11,14 +11,10 @@
  */
 
 import { generateTextWithFallback } from "@/lib/gemini";
-import { stripMarkdownEmphasis } from "@/lib/markdown";
 import { assertStaff } from "@/lib/staff-auth";
+import { parseMarketingSections, type MarketingContentResult } from "@/lib/marketing-parse";
 
-export interface MarketingContentResult {
-  instagram: string;
-  newsletter: string;
-  staffPickCard: string;
-}
+export type { MarketingContentResult };
 
 export type GenerateMarketingContentResult =
   | { ok: true; content: MarketingContentResult }
@@ -38,18 +34,6 @@ INSTAGRAM: <text>
 NEWSLETTER: <text>
 STAFF_PICK_CARD: <text>`;
 
-function parseSections(raw: string): MarketingContentResult {
-  const get = (label: string) => {
-    const match = raw.match(new RegExp(`${label}:\\s*([\\s\\S]*?)(?=\\n[A-Z_]+:|$)`));
-    return stripMarkdownEmphasis(match?.[1]?.trim() ?? "");
-  };
-  return {
-    instagram: get("INSTAGRAM"),
-    newsletter: get("NEWSLETTER"),
-    staffPickCard: get("STAFF_PICK_CARD"),
-  };
-}
-
 export async function generateMarketingContentAction(
   transcript: string
 ): Promise<GenerateMarketingContentResult> {
@@ -68,6 +52,15 @@ export async function generateMarketingContentAction(
       message: "Describe the book or event first — a sentence or two is enough.",
     };
   }
+  // The note is interpolated raw into the prompt. A staff member's
+  // intended "sentence or two" is nowhere near this; a stray multi-KB
+  // paste would otherwise fail as an opaque Gemini error.
+  if (trimmed.length > 4000) {
+    return {
+      ok: false,
+      message: "That note is too long — keep it to a few sentences.",
+    };
+  }
 
   try {
     const response = await generateTextWithFallback({
@@ -75,7 +68,7 @@ export async function generateMarketingContentAction(
     });
 
     const raw = response.text ?? "";
-    const content = parseSections(raw);
+    const content = parseMarketingSections(raw);
     if (!content.instagram && !content.newsletter && !content.staffPickCard) {
       return { ok: false, message: "Didn't get usable content back — try rephrasing your note." };
     }

@@ -19,7 +19,7 @@ export default async function ProductDPage() {
 
   const supabase = getServerClient();
 
-  const [{ data: books }, { data: events }] = await Promise.all([
+  const [booksRes, eventsRes] = await Promise.all([
     supabase.from("books").select("isbn, book_title, author_name, cover_url").order("book_title"),
     // Future events only — a marketing post about an event that already
     // happened isn't useful. Same "or upcoming event" grounding Product C
@@ -31,6 +31,20 @@ export default async function ProductDPage() {
       .order("author_event_at", { ascending: true }),
   ]);
 
+  // Mirror product-b/page.tsx: a failed query must not render as an empty
+  // picker that looks like "the catalog really is empty" — log it and
+  // tell staff the picker is degraded (they can still submit a note).
+  const pickerErrors = [booksRes.error, eventsRes.error].filter(Boolean);
+  if (pickerErrors.length > 0) {
+    console.error(
+      `Product D picker query failure: ${pickerErrors.map((e) => e?.message).join("; ")}`
+    );
+  }
+  const loadError =
+    pickerErrors.length > 0
+      ? "The title/event pickers failed to load — you can still generate from a typed note."
+      : undefined;
+
   return (
     <main className="mx-auto max-w-7xl px-6 py-16">
       <StaffNav active="marketing" />
@@ -39,7 +53,7 @@ export default async function ProductDPage() {
         Dictate a quick note about a title or event — get an Instagram caption, newsletter
         blurb, and shelf-card line to review.
       </p>
-      <ContentForm books={books ?? []} events={events ?? []} />
+      <ContentForm books={booksRes.data ?? []} events={eventsRes.data ?? []} loadError={loadError} />
     </main>
   );
 }

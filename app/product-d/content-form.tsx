@@ -22,13 +22,26 @@ interface EventRow {
   author_event_at: string; // ISO 8601
 }
 
-export function ContentForm({ books, events }: { books: BookRow[]; events: EventRow[] }) {
+export function ContentForm({
+  books,
+  events,
+  loadError,
+}: {
+  books: BookRow[];
+  events: EventRow[];
+  loadError?: string;
+}) {
   const [isbn, setIsbn] = useState("");
   const [eventId, setEventId] = useState("");
   const [note, setNote] = useState("");
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<
-    | { kind: "success"; content: MarketingContentResult }
+    | {
+        kind: "success";
+        content: MarketingContentResult;
+        imageHeadlineFallback: string;
+        imageSubtitle: string;
+      }
     | { kind: "error"; message: string }
     | null
   >(null);
@@ -43,6 +56,18 @@ export function ContentForm({ books, events }: { books: BookRow[]; events: Event
 
     setPending(true);
     setResult(null);
+    // Snapshot the book/event identity used for THIS generation. The
+    // dropdowns stay enabled while results are shown, so reading
+    // selectedBook/selectedEvent live in the render would let the social
+    // image drift to a different title while the captions still describe
+    // the original.
+    const imageHeadlineFallback =
+      selectedBook?.book_title || selectedEvent?.event_title || "Riverside Books";
+    const imageSubtitle = selectedBook
+      ? `${selectedBook.book_title} — ${selectedBook.author_name}`
+      : selectedEvent
+        ? `${selectedEvent.event_title} — ${formatEventTimestamp(selectedEvent.author_event_at)}`
+        : "";
     try {
       const facts: string[] = [];
       if (selectedBook) facts.push(`about the book "${selectedBook.book_title}" by ${selectedBook.author_name}`);
@@ -54,8 +79,21 @@ export function ContentForm({ books, events }: { books: BookRow[]; events: Event
       const transcript = [note.trim(), ...facts].filter(Boolean).join(" — ");
       const res = await generateMarketingContentAction(transcript);
       setResult(
-        res.ok ? { kind: "success", content: res.content } : { kind: "error", message: res.message }
+        res.ok
+          ? { kind: "success", content: res.content, imageHeadlineFallback, imageSubtitle }
+          : { kind: "error", message: res.message }
       );
+    } catch (err) {
+      // generateMarketingContentAction handles model failures internally
+      // and returns { ok: false }. This catch is for a transport-level
+      // failure of the action itself (network drop, a serverless
+      // function timeout mid-fallback-chain) — without it the button
+      // just silently reverts with no output and no error.
+      console.error(`Marketing action transport failure: ${err}`);
+      setResult({
+        kind: "error",
+        message: "Something went wrong reaching the server — please try again.",
+      });
     } finally {
       setPending(false);
     }
@@ -63,6 +101,11 @@ export function ContentForm({ books, events }: { books: BookRow[]; events: Event
 
   return (
     <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+      {loadError && (
+        <p className="rounded-md border border-gold/40 bg-gold/10 p-3 text-sm text-ink/80">
+          {loadError}
+        </p>
+      )}
       <div className="grid gap-6 lg:grid-cols-3">
         <div>
           <label htmlFor="isbn" className="block text-sm font-medium text-ink">
@@ -142,6 +185,7 @@ export function ContentForm({ books, events }: { books: BookRow[]; events: Event
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={4}
+            maxLength={2000}
             placeholder="e.g. staff pick this week, perfect cozy autumn read"
             className="mt-1 block w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
           />
@@ -177,14 +221,8 @@ export function ContentForm({ books, events }: { books: BookRow[]; events: Event
               <p className="mt-1 font-mono text-ink/80">{result.content.staffPickCard}</p>
             </div>
             <GeneratedImage
-              headline={result.content.staffPickCard || selectedBook?.book_title || selectedEvent?.event_title || "Riverside Books"}
-              subtitle={
-                selectedBook
-                  ? `${selectedBook.book_title} — ${selectedBook.author_name}`
-                  : selectedEvent
-                    ? `${selectedEvent.event_title} — ${formatEventTimestamp(selectedEvent.author_event_at)}`
-                    : ""
-              }
+              headline={result.content.staffPickCard || result.imageHeadlineFallback}
+              subtitle={result.imageSubtitle}
             />
           </div>
         )}
