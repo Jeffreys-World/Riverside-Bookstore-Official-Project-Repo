@@ -12,6 +12,7 @@
 
 import { generateTextWithFallback } from "@/lib/gemini";
 import { stripMarkdownEmphasis } from "@/lib/markdown";
+import { assertStaff } from "@/lib/staff-auth";
 
 export interface MarketingContentResult {
   instagram: string;
@@ -52,6 +53,14 @@ function parseSections(raw: string): MarketingContentResult {
 export async function generateMarketingContentAction(
   transcript: string
 ): Promise<GenerateMarketingContentResult> {
+  // This action calls no RLS-protected table (Gemini only), so there's no
+  // policy to fall back on — the page redirect isn't enough on its own.
+  // Without this check any signed-in Product A customer could POST here
+  // directly and burn the store's paid Gemini quota with arbitrary text.
+  if (!(await assertStaff())) {
+    return { ok: false, message: "Staff sign-in required." };
+  }
+
   const trimmed = transcript.trim();
   if (!trimmed) {
     return {

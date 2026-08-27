@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase-server";
+import { requireStaffPage } from "@/lib/staff-auth";
 import { Dashboard } from "./dashboard";
 
 // Auth-gated and always reads live orders/stock — must never be
@@ -17,28 +17,14 @@ export default async function ProductBPage({
     merchAdded?: string;
   };
 }) {
+  // Redirects an unauthenticated visitor to sign-in and a signed-in
+  // non-staff visitor (e.g. a Product A customer on the one shared auth
+  // cookie) to the customer app. is_staff() (0018) is re-checked here on
+  // every load, so a roster change takes effect without a forced
+  // sign-out. Shared with Product D — see lib/staff-auth.ts.
+  await requireStaffPage();
+
   const supabase = getServerClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  // orders has no anon SELECT policy (0003_orders_staff_select.sql) — an
-  // unauthenticated visitor must never reach the pending-preorder queue.
-  if (!session) {
-    redirect("/product-b/sign-in");
-  }
-
-  // Session alone isn't staff (0018_staff_rbac.sql) — signInAction already
-  // rejects a non-staff sign-in, but a session can also arrive here from
-  // an existing cookie (e.g. a signed-in Product A customer — one shared
-  // auth cookie — or after a roster change revokes access), so this page
-  // re-checks rather than trusting sign-in time alone. Don't sign them
-  // out: is_staff() is re-checked on every load, so a non-staff session
-  // simply can't see the dashboard, and a customer keeps their session.
-  const { data: isStaff } = await supabase.rpc("is_staff");
-  if (!isStaff) {
-    redirect("/product-a");
-  }
 
   const [ordersRes, booksRes, merchandiseRes] = await Promise.all([
     supabase

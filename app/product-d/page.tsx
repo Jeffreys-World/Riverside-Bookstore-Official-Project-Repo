@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase-server";
+import { requireStaffPage } from "@/lib/staff-auth";
 import { ContentForm } from "./content-form";
 import { StaffNav } from "../product-b/staff-nav";
 
@@ -12,13 +12,12 @@ import { StaffNav } from "../product-b/staff-nav";
 export const dynamic = "force-dynamic";
 
 export default async function ProductDPage() {
+  // Was only `if (!session)` — a signed-in Product A customer (one shared
+  // auth cookie) sailed straight through to the store's paid Gemini key.
+  // requireStaffPage() runs the same is_staff() gate as Product B.
+  await requireStaffPage();
+
   const supabase = getServerClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) {
-    redirect("/product-b/sign-in");
-  }
 
   const [{ data: books }, { data: events }] = await Promise.all([
     supabase.from("books").select("isbn, book_title, author_name, cover_url").order("book_title"),
