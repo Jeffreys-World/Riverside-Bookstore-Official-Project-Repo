@@ -8,10 +8,10 @@
 --    every cover source (Google Books, Open Library) resolved it to a
 --    Stephen Hawking cover. Corrected to 9780553386790 (the HBO tie-in
 --    edition, matching the new cover art). `books.isbn` is the primary
---    key with no ON UPDATE CASCADE, and `author_events.isbn` has one row
---    pointing at it (0027's "World-Building with George R.R. Martin"), so
---    that FK is dropped and remade around the update. No orders reference
---    it.
+--    key with no ON UPDATE CASCADE, and both `author_events.isbn` (0027's
+--    "World-Building with George R.R. Martin") and `orders.isbn` (a real
+--    pre-order) reference it, so both FKs are dropped, all three tables
+--    updated, and both FKs remade.
 --
 -- 2. "Sapiens" had Google Books' "cover to be revealed" placeholder image
 --    (volume id ibALnwEACAAJ). Repointed to a real edition (zfuOEAAAQBAJ).
@@ -25,20 +25,19 @@
 begin;
 
 -- 1. Game of Thrones ISBN correction -------------------------------------
--- Drop the FK from author_events -> books (inline FKs are auto-named
--- author_events_isbn_fkey; look it up by its target so this can't drift).
+-- Drop every FK that targets books.isbn (author_events.isbn + orders.isbn),
+-- looked up by target so the names can't drift, then remake both.
 do $$
 declare
-  v_con text;
+  r record;
 begin
-  select conname into v_con
-    from pg_constraint
-   where conrelid = 'author_events'::regclass
-     and contype = 'f'
-     and confrelid = 'books'::regclass;
-  if v_con is not null then
-    execute 'alter table author_events drop constraint ' || quote_ident(v_con);
-  end if;
+  for r in
+    select conrelid::regclass::text as tbl, conname
+      from pg_constraint
+     where contype = 'f' and confrelid = 'books'::regclass
+  loop
+    execute format('alter table %s drop constraint %I', r.tbl, r.conname);
+  end loop;
 end $$;
 
 update books
@@ -46,13 +45,16 @@ update books
        cover_url = 'https://books.google.com/books/content?id=hXNvadj27ekC&printsec=frontcover&img=1&zoom=1&w=800&source=gbs_api'
  where isbn = '9780553380163';
 
-update author_events
-   set isbn = '9780553386790'
- where isbn = '9780553380163';
+update author_events set isbn = '9780553386790' where isbn = '9780553380163';
+update orders        set isbn = '9780553386790' where isbn = '9780553380163';
 
 alter table author_events
   add constraint author_events_isbn_fkey
   foreign key (isbn) references books (isbn) on delete set null;
+
+alter table orders
+  add constraint orders_isbn_fkey
+  foreign key (isbn) references books (isbn);
 
 -- 2. Sapiens real cover -------------------------------------------------
 update books
