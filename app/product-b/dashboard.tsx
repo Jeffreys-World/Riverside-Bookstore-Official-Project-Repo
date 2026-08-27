@@ -86,7 +86,7 @@ const TABS = [
     key: "stock",
     label: "Stock Levels",
     description:
-      "Every catalog title, most urgent first: out of stock, then low, then not yet inventoried. Use Remove stock to fix a miscounted quantity; use Delete listing to pull a bad entry (duplicate, wrong price) off the site entirely.",
+      "Every catalog title, most urgent first: out of stock, then low, then not yet inventoried. Use Remove stock to reduce a miscounted quantity; use Delete listing to pull a bad entry (duplicate, wrong price) off the site entirely.",
   },
   {
     key: "merch-stock",

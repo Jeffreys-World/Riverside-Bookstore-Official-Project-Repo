@@ -35,7 +35,19 @@ export async function requireStaffPage(): Promise<void> {
   // non-staff sign-in, but a session can also arrive from an existing
   // cookie (a signed-in Product A customer, or after a roster change
   // revokes access), so re-check here rather than trusting sign-in time.
-  const { data: isStaff } = await supabase.rpc("is_staff");
+  const { data: isStaff, error } = await supabase.rpc("is_staff");
+  if (error) {
+    // A transient RPC failure (PostgREST 5xx, network blip, token-refresh
+    // race) must not be conflated with "not staff" and bounce a real
+    // staff member to the customer storefront — that reads as a revoked
+    // account. Fail closed, but to sign-in with a retry message.
+    console.error(`is_staff() check failed: ${error.message}`);
+    redirect(
+      `/product-b/sign-in?error=${encodeURIComponent(
+        "We couldn't verify your staff access just now — please sign in again."
+      )}`
+    );
+  }
   if (!isStaff) {
     redirect("/product-a");
   }

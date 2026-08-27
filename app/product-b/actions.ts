@@ -4,6 +4,17 @@ import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase-server";
 import { fetchBookMetadata, searchBookCandidates, type BookSearchCandidate } from "@/lib/google-books";
 import { addBookRequestSchema, addMerchandiseRequestSchema } from "@/types/schema";
+import { friendlyDbError, isMappedDbError } from "@/lib/db-errors";
+import { assertStaff } from "@/lib/staff-auth";
+
+const BOOK_INSERT_ERRORS = {
+  "23505": "A book with that ISBN is already listed.",
+  "22003": "That price is too large — check the amount.",
+};
+const MERCH_INSERT_ERRORS = {
+  "23505": "An item with that name is already listed.",
+  "22003": "That price is too large — check the amount.",
+};
 
 export async function signInAction(formData: FormData) {
   const email = String(formData.get("email") ?? "");
@@ -24,7 +35,15 @@ export async function signInAction(formData: FormData) {
   // there's no need to also destroy the session — that would log a
   // customer out of Product A (one shared auth cookie).
   const { data: isStaff, error: staffCheckError } = await supabase.rpc("is_staff");
-  if (staffCheckError || !isStaff) {
+  if (staffCheckError) {
+    console.error(`is_staff() check failed during sign-in: ${staffCheckError.message}`);
+    redirect(
+      `/product-b/sign-in?error=${encodeURIComponent(
+        "We couldn't verify your staff access just now — please try again."
+      )}`
+    );
+  }
+  if (!isStaff) {
     redirect(`/product-b/sign-in?error=${encodeURIComponent("This account isn't a staff account.")}`);
   }
 
@@ -68,7 +87,12 @@ export async function addBookAction(formData: FormData) {
     .insert({ isbn, book_title, author_name, description, cover_url, author_bio, stock_quantity, price });
 
   if (error) {
-    redirect(`/product-b?addBookError=${encodeURIComponent(error.message)}`);
+    if (!isMappedDbError(error, BOOK_INSERT_ERRORS)) {
+      console.error(`addBookAction insert failed [${error.code ?? "?"}]: ${error.message}`);
+    }
+    redirect(
+      `/product-b?addBookError=${encodeURIComponent(friendlyDbError(error, BOOK_INSERT_ERRORS))}`
+    );
   }
 
   // Only auto-fetch from Google Books if staff didn't provide either
@@ -125,7 +149,12 @@ export async function addMerchandiseAction(formData: FormData) {
     // item_name is the table's unique key (0009_merchandise.sql) — a
     // duplicate name is the one realistic failure here, same shape as a
     // duplicate ISBN failing addBookAction's insert.
-    redirect(`/product-b?addMerchError=${encodeURIComponent(error.message)}`);
+    if (!isMappedDbError(error, MERCH_INSERT_ERRORS)) {
+      console.error(`addMerchandiseAction insert failed [${error.code ?? "?"}]: ${error.message}`);
+    }
+    redirect(
+      `/product-b?addMerchError=${encodeURIComponent(friendlyDbError(error, MERCH_INSERT_ERRORS))}`
+    );
   }
 
   redirect(`/product-b?merchAdded=${encodeURIComponent(item_name)}`);
@@ -141,6 +170,9 @@ export type RemoveStockResult =
  * the atomic clamp-at-0 inside remove_book_stock() itself (0032).
  */
 export async function removeBookStockAction(isbn: string, amount: number): Promise<RemoveStockResult> {
+  if (!(await assertStaff())) {
+    return { ok: false, message: "Staff access required." };
+  }
   if (!Number.isInteger(amount) || amount < 1) {
     return { ok: false, message: "Enter a whole number of 1 or more." };
   }
@@ -148,15 +180,22 @@ export async function removeBookStockAction(isbn: string, amount: number): Promi
   const supabase = getServerClient();
   const { data, error } = await supabase.rpc("remove_book_stock", { p_isbn: isbn, p_amount: amount });
   if (error) {
-    return { ok: false, message: error.message };
+    console.error(`removeBookStockAction failed [${error.code ?? "?"}]: ${error.message}`);
+    return { ok: false, message: friendlyDbError(error) };
   }
   if (data === null) {
-    return { ok: false, message: "That title couldn't be found." };
+    return {
+      ok: false,
+      message: "Couldn't adjust that title — it may not be inventoried yet.",
+    };
   }
   return { ok: true, stockQuantity: data as number };
 }
 
 export async function removeMerchandiseStockAction(id: string, amount: number): Promise<RemoveStockResult> {
+  if (!(await assertStaff())) {
+    return { ok: false, message: "Staff access required." };
+  }
   if (!Number.isInteger(amount) || amount < 1) {
     return { ok: false, message: "Enter a whole number of 1 or more." };
   }
@@ -164,10 +203,14 @@ export async function removeMerchandiseStockAction(id: string, amount: number): 
   const supabase = getServerClient();
   const { data, error } = await supabase.rpc("remove_merchandise_stock", { p_id: id, p_amount: amount });
   if (error) {
-    return { ok: false, message: error.message };
+    console.error(`removeMerchandiseStockAction failed [${error.code ?? "?"}]: ${error.message}`);
+    return { ok: false, message: friendlyDbError(error) };
   }
   if (data === null) {
-    return { ok: false, message: "That item couldn't be found." };
+    return {
+      ok: false,
+      message: "Couldn't adjust that item — it may not be inventoried yet.",
+    };
   }
   return { ok: true, stockQuantity: data as number };
 }
@@ -183,22 +226,37 @@ export type DeleteListingResult = { ok: true } | { ok: false; message: string };
  * is surfaced as a plain message instead of leaking the raw Postgres error.
  */
 export async function deleteBookAction(isbn: string): Promise<DeleteListingResult> {
+  if (!(await assertStaff())) {
+    return { ok: false, message: "Staff access required." };
+  }
   const supabase = getServerClient();
   const { error } = await supabase.from("books").delete().eq("isbn", isbn);
   if (error) {
-    if (error.code === "23503") {
-      return { ok: false, message: "Can't remove — this title has order history. Use Remove stock instead." };
+    const message = friendlyDbError(error, {
+      "23503": "Can't remove — this title has order history. Use Remove stock instead.",
+    });
+    if (error.code !== "23503") {
+      console.error(`deleteBookAction failed [${error.code ?? "?"}]: ${error.message}`);
     }
-    return { ok: false, message: error.message };
+    return { ok: false, message };
   }
   return { ok: true };
 }
 
 export async function deleteMerchandiseAction(id: string): Promise<DeleteListingResult> {
+  if (!(await assertStaff())) {
+    return { ok: false, message: "Staff access required." };
+  }
   const supabase = getServerClient();
   const { error } = await supabase.from("merchandise").delete().eq("id", id);
   if (error) {
-    return { ok: false, message: error.message };
+    const message = friendlyDbError(error, {
+      "23503": "Can't remove — this item has order history.",
+    });
+    if (error.code !== "23503") {
+      console.error(`deleteMerchandiseAction failed [${error.code ?? "?"}]: ${error.message}`);
+    }
+    return { ok: false, message };
   }
   return { ok: true };
 }
@@ -210,17 +268,13 @@ export type SearchBooksResult =
 /**
  * Backs the "search instead of typing an exact ISBN" add-book flow
  * (dashboard.tsx). Not DB-touching — no RLS to fall back on the way
- * addBookAction's insert is protected — so this checks the session
- * itself instead of only relying on the page-level redirect, same
- * least-privilege reasoning as every other staff-only action here.
+ * addBookAction's insert is protected — so this runs the full is_staff()
+ * check itself, matching every mutation here rather than only checking
+ * that *a* session exists (a signed-in Product A customer holds one too).
  */
 export async function searchBooksAction(query: string): Promise<SearchBooksResult> {
-  const supabase = getServerClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) {
-    return { ok: false, message: "Your session expired — sign in again." };
+  if (!(await assertStaff())) {
+    return { ok: false, message: "Staff access required." };
   }
 
   const trimmed = query.trim();
