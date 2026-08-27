@@ -18,7 +18,9 @@ function todayISODate(): string {
 
 export default function CheckoutPage() {
   const { items, subtotal, removeItem } = useCart();
-  const [customerId, setCustomerId] = useState(() => loadCustomerId());
+  // Start empty so SSR and the first client render agree; the stored id
+  // is loaded post-mount (below), same as ClaimIdField / account-view.
+  const [customerId, setCustomerId] = useState("");
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [pickupDate, setPickupDate] = useState(todayISODate());
   const [pickupWindow, setPickupWindow] = useState<string>(PICKUP_WINDOWS[0]);
@@ -38,6 +40,8 @@ export default function CheckoutPage() {
   // reads loadCustomerId) keeps working unchanged.
   useEffect(() => {
     let cancelled = false;
+    // Pre-auth flow: seed from the id this browser stored last visit.
+    setCustomerId((prev) => prev || loadCustomerId());
     (async () => {
       const { data } = await getBrowserClient().auth.getSession();
       const email = data.session?.user.email ?? null;
@@ -109,16 +113,18 @@ export default function CheckoutPage() {
             </p>
           ))}
         </div>
-        {outcome.rewardPoints !== null && (
+        {succeeded.length > 0 && outcome.rewardPoints !== null && (
           <p className="mt-4 text-ink/80">
             You now have {outcome.rewardPoints} {outcome.rewardPoints === 1 ? "point" : "points"} toward
             your next reward.
           </p>
         )}
-        <p className="mt-2 text-ink/70">
-          We&apos;ll have your order ready for pickup {pickupDate} during {pickupWindow} at{" "}
-          {PICKUP_LOCATION.addressLine1}.
-        </p>
+        {succeeded.length > 0 && (
+          <p className="mt-2 text-ink/70">
+            We&apos;ll have your order ready for pickup {pickupDate} during {pickupWindow} at{" "}
+            {PICKUP_LOCATION.addressLine1}.
+          </p>
+        )}
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
             href="/product-a/account"
@@ -126,6 +132,15 @@ export default function CheckoutPage() {
           >
             View my account
           </Link>
+          {failed.length > 0 && (
+            <Link
+              href="/product-a/checkout"
+              onClick={() => setOutcome(null)}
+              className="min-h-[44px] rounded-md border border-accent px-6 py-2 font-medium text-accent transition-transform duration-150 hover:scale-105"
+            >
+              Return to checkout
+            </Link>
+          )}
           <Link
             href="/product-a"
             className="min-h-[44px] rounded-md border border-ink/20 px-6 py-2 font-medium text-ink transition-transform duration-150 hover:scale-105"

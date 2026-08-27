@@ -55,6 +55,15 @@ async function placeSingleOrder(
     if (shortage) {
       return { ok: false, message: `only ${shortage[1]} left in stock.` };
     }
+    // A well-formed but nonexistent customer_id violates the
+    // orders.customer_id FK (0001) — retrying never helps, so say what's
+    // actually wrong instead of the generic message.
+    if (error.code === "23503" || /foreign key/i.test(error.message)) {
+      return {
+        ok: false,
+        message: "we couldn't find that customer ID — check it, or create an account.",
+      };
+    }
     return { ok: false, message: "something went wrong placing this item. Please try again." };
   }
 
@@ -103,6 +112,23 @@ export async function checkoutAction(input: unknown): Promise<CheckoutResult> {
         ? { isbn: item.isbn, ok: true, orderId: result.orderId }
         : { isbn: item.isbn, ok: false, message: result.message }
     );
+  }
+
+  // Nothing was reserved — don't hand the client an ok:true it will
+  // render as a "pickup arranged" success screen.
+  if (lines.length > 0 && lines.every((l) => !l.ok)) {
+    const only = lines[0]?.message ?? "";
+    const allSameReason = lines.every((l) => l.message === only);
+    let message: string;
+    if (allSameReason && /customer id/i.test(only)) {
+      // Every line failed for the same account-level reason — lead with it.
+      message = only.charAt(0).toUpperCase() + only.slice(1);
+    } else if (lines.length === 1 || allSameReason) {
+      message = `That couldn't be reserved — ${only}`;
+    } else {
+      message = "None of your items could be reserved — check availability and try again.";
+    }
+    return { ok: false, message };
   }
 
   // Best-effort: surface the fresh stamp count alongside the confirmation.

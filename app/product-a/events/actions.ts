@@ -26,7 +26,19 @@ export async function rsvpToEventAction(input: unknown): Promise<RsvpResult> {
     p_event_id: parsed.data.event_id,
   });
 
-  if (error || !data) {
+  if (error) {
+    // A well-formed but nonexistent customer_id violates the
+    // event_tickets.customer_id FK (0001) — name the actual problem.
+    if (error.code === "23503" || /foreign key/i.test(error.message)) {
+      return {
+        ok: false,
+        message: "We couldn't find that customer ID — check it, or create an account.",
+      };
+    }
+    console.error(`rsvpToEventAction failed [${error.code ?? "?"}]: ${error.message}`);
+    return { ok: false, message: "Something went wrong RSVPing. Please try again." };
+  }
+  if (!data) {
     return { ok: false, message: "Something went wrong RSVPing. Please try again." };
   }
 

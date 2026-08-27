@@ -9,7 +9,9 @@ import { getExistingTicketAction, rsvpToEventAction } from "../actions";
 import { getMyCustomerIdAction } from "../../actions";
 
 export function EventRsvp({ eventId }: { eventId: string }) {
-  const [customerId, setCustomerId] = useState(() => loadCustomerId());
+  // Empty on first render so SSR and hydration agree; the stored id is
+  // loaded in the effect below (same pattern as ClaimIdField / checkout).
+  const [customerId, setCustomerId] = useState("");
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [ticketId, setTicketId] = useState<string | null>(null);
@@ -23,6 +25,7 @@ export function EventRsvp({ eventId }: { eventId: string }) {
     let cancelled = false;
     (async () => {
       let id = loadCustomerId();
+      if (id) setCustomerId((prev) => prev || id);
       const { data } = await getBrowserClient().auth.getSession();
       const email = data.session?.user.email ?? null;
       if (email) {

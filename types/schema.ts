@@ -266,6 +266,12 @@ export type CreatePreorderRequest = z.infer<typeof createPreorderRequestSchema>;
 // create_preorder RPC call per line item (see that file's comment for why:
 // each item's stock check stays atomically correct, and one sold-out item
 // doesn't fail the whole cart) rather than a single multi-row RPC.
+/** Today's date (YYYY-MM-DD) in the store's timezone — the reference
+ *  point for "is this pickup date in the past". */
+export function todayInStoreTimeZone(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: STORE_TIME_ZONE }).format(new Date());
+}
+
 export const checkoutRequestSchema = z.object({
   customer_id: z.string().regex(CUSTOMER_ID_REGEX),
   items: z
@@ -276,7 +282,13 @@ export const checkoutRequestSchema = z.object({
       })
     )
     .min(1),
-  pickup_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  pickup_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    // The form carries noValidate, so the <input min> isn't enforced on
+    // submit — without this a customer could pick a past date and the
+    // order (and Product B's pickup queue) would show it.
+    .refine((d) => d >= todayInStoreTimeZone(), "Choose a pickup date today or later."),
   pickup_window: pickupWindowSchema,
 });
 export type CheckoutRequest = z.infer<typeof checkoutRequestSchema>;
