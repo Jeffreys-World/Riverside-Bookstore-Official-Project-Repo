@@ -58,8 +58,13 @@ function TriggerButton({
   );
 }
 
+// rounded-b-none: the persistent accent underline is `border-b-2`, and a
+// rounded bottom corner bends that 2px line up into a little cup at each end
+// (looked like a hand-drawn smile under every tab). Square the bottom so the
+// underline reads as a flat tab rule; keep the top corners rounded for the
+// hover shadow.
 const TRIGGER_CLASS = (active: boolean) =>
-  `inline-block whitespace-nowrap rounded-md border-b-2 border-accent px-3 py-3 text-sm font-medium transition-transform transition-colors duration-150 hover:scale-125 hover:shadow-sm ${
+  `inline-block whitespace-nowrap rounded-md rounded-b-none border-b-2 border-accent px-3 py-3 text-sm font-medium transition-transform transition-colors duration-150 hover:scale-125 hover:shadow-sm ${
     active ? "text-ink" : "text-ink/60 hover:text-ink"
   }`;
 
