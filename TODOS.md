@@ -10,8 +10,9 @@
   Killed it, `rm -rf .next`, restarted. No source change.
 - **ISSUE-001 (High):** "A Game of Thrones" catalog card + drawer showed the *A Brief History
   of Time* blurb — `0035` fixed this row's ISBN + cover but not `books.description`.
-  Fixed by `0036_fix_got_description.sql` (commit `24aff3a`). **Apply `0036` to the live DB**
-  (dashboard SQL editor, then `migration repair --status applied 0036`), same as `0035`.
+  Fixed by `0036_fix_got_description.sql` (commit `24aff3a`). **Applied to prod 2026-08-27**
+  (`migration list` shows `0036 | 0036 | 0036`); verified live — the GoT drawer now shows the
+  Winterfell/Starks blurb.
 - **ISSUE-003 (Med):** support chatbot relayed the raw `needs_attention` stock enum to a
   customer and mislabelled a pre-order title as low stock. Fixed — `availabilityNoteFor` in
   `lib/inventory.ts` + `app/product-c/actions.ts` (commit `a7b1a45`, regression test `6e3ea2c`).
@@ -20,7 +21,8 @@
 - **ISSUE-004 (Low):** no favicon → 2 console 404s per page. Added `app/icon.svg` (commit
   `a84d0d8`).
 
-**Status: 4 fixed** (ISSUE-001 pending its prod DB apply), **1 deferred** (ISSUE-005 below).
+**Status: 4 fixed and verified live** (ISSUE-001's `0036` applied to prod 2026-08-27),
+**1 deferred** (ISSUE-005 below).
 
 ---
 
