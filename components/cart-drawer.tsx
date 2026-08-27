@@ -32,7 +32,7 @@ export function CartDrawer() {
             type="button"
             onClick={close}
             aria-label="Close cart"
-            className="min-h-[44px] min-w-[44px] rounded-md text-ink/60 hover:text-ink"
+            className="min-h-[44px] min-w-[44px] rounded-md text-ink/60 transition-transform duration-150 hover:scale-125 hover:text-ink"
           >
             ✕
           </button>
@@ -78,7 +78,7 @@ export function CartDrawer() {
                           onClick={() => setQuantity(item.isbn, item.quantity - 1)}
                           disabled={item.quantity <= 1}
                           aria-label={`Decrease quantity of ${item.book_title}`}
-                          className="min-h-[32px] min-w-[32px] text-ink disabled:opacity-30"
+                          className="min-h-[32px] min-w-[32px] text-ink transition-transform duration-150 hover:scale-125 disabled:opacity-30 disabled:hover:scale-100"
                         >
                           −
                         </button>
@@ -93,7 +93,7 @@ export function CartDrawer() {
                           onClick={() => setQuantity(item.isbn, item.quantity + 1)}
                           disabled={item.quantity >= item.maxQuantity}
                           aria-label={`Increase quantity of ${item.book_title}`}
-                          className="min-h-[32px] min-w-[32px] text-ink disabled:opacity-30"
+                          className="min-h-[32px] min-w-[32px] text-ink transition-transform duration-150 hover:scale-125 disabled:opacity-30 disabled:hover:scale-100"
                         >
                           +
                         </button>
@@ -101,7 +101,7 @@ export function CartDrawer() {
                       <button
                         type="button"
                         onClick={() => removeItem(item.isbn)}
-                        className="text-xs text-claret underline-offset-2 hover:underline"
+                        className="text-xs text-claret underline-offset-2 transition-transform duration-150 hover:scale-105 hover:underline"
                       >
                         Remove
                       </button>
@@ -123,10 +123,10 @@ export function CartDrawer() {
             href="/product-a/checkout"
             onClick={close}
             aria-disabled={items.length === 0}
-            className={`mt-4 block min-h-[44px] rounded-md px-6 py-2 text-center font-medium text-paper ${
+            className={`mt-4 block min-h-[44px] rounded-md px-6 py-2 text-center font-medium text-paper transition-transform duration-150 ${
               items.length === 0
                 ? "pointer-events-none bg-ink/20"
-                : "bg-accent hover:bg-accent/90"
+                : "bg-accent hover:scale-105 hover:bg-accent/90"
             }`}
           >
             Go to checkout

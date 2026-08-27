@@ -126,7 +126,7 @@ export function GeneratedImage({ headline, subtitle }: { headline: string; subti
       <button
         type="button"
         onClick={handleDownload}
-        className="mt-3 min-h-[44px] rounded-md border border-ink/20 px-4 py-2 text-sm font-medium text-ink"
+        className="mt-3 min-h-[44px] rounded-md border border-ink/20 px-4 py-2 text-sm font-medium text-ink transition-transform duration-150 hover:scale-105"
       >
         Download image
       </button>

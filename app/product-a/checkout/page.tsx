@@ -98,13 +98,13 @@ export default function CheckoutPage() {
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
             href="/product-a/account"
-            className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper"
+            className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105"
           >
             View my account
           </Link>
           <Link
             href="/product-a"
-            className="min-h-[44px] rounded-md border border-ink/20 px-6 py-2 font-medium text-ink"
+            className="min-h-[44px] rounded-md border border-ink/20 px-6 py-2 font-medium text-ink transition-transform duration-150 hover:scale-105"
           >
             Back to catalog
           </Link>
@@ -120,7 +120,7 @@ export default function CheckoutPage() {
         <p className="mt-4 text-ink/70">Your cart is empty.</p>
         <Link
           href="/product-a"
-          className="mt-6 inline-block min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper"
+          className="mt-6 inline-block min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105"
         >
           Browse the catalog
         </Link>
@@ -180,7 +180,7 @@ export default function CheckoutPage() {
             required
             className="mt-1 block min-h-[44px] w-full rounded-md border border-ink/20 bg-field px-3 py-2 text-ink"
           />
-          <Link href="/product-a/signup" className="mt-1 inline-block text-sm text-accent underline-offset-2 hover:underline">
+          <Link href="/product-a/signup" className="mt-1 inline-block text-sm text-accent underline-offset-2 transition-transform duration-150 hover:scale-105 hover:underline">
             New customer? Create an account
           </Link>
         </div>
@@ -222,7 +222,7 @@ export default function CheckoutPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="min-h-[44px] w-full rounded-md bg-accent px-6 py-2 font-medium text-paper disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+          className="min-h-[44px] w-full rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 sm:w-auto"
         >
           {submitting ? "Placing your order…" : "Place order"}
         </button>

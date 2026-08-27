@@ -69,7 +69,7 @@ export function ProductDrawer() {
             type="button"
             onClick={close}
             aria-label="Close product details"
-            className="min-h-[44px] min-w-[44px] rounded-md text-ink/60 hover:text-ink"
+            className="min-h-[44px] min-w-[44px] rounded-md text-ink/60 transition-transform duration-150 hover:scale-125 hover:text-ink"
           >
             ✕
           </button>
@@ -120,7 +120,7 @@ export function ProductDrawer() {
                   type="button"
                   onClick={handleAdd}
                   disabled={!orderable || atMax}
-                  className="mt-6 min-h-[44px] w-full rounded-md bg-accent px-6 py-2 font-medium text-paper transition disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-6 min-h-[44px] w-full rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
                 >
                   {!orderable ? "Ask a bookseller" : atMax ? "Max in cart" : justAdded ? "Added ✓" : "Add to cart"}
                 </button>

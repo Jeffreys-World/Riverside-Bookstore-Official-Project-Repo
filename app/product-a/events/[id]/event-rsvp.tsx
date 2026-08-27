@@ -80,7 +80,7 @@ export function EventRsvp({ eventId }: { eventId: string }) {
         <button
           type="submit"
           disabled={submitting}
-          className="min-h-[44px] flex-none rounded-md bg-accent px-6 py-2 font-medium text-paper disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-[44px] flex-none rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
         >
           {submitting ? "RSVPing…" : "RSVP"}
         </button>

@@ -46,7 +46,7 @@ export default function SignInPage({
         </div>
         <button
           type="submit"
-          className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper"
+          className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105"
         >
           Sign in
         </button>

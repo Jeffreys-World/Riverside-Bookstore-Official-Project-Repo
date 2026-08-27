@@ -72,7 +72,7 @@ export function SupportTabs({ events, eventsError }: { events: EventRow[]; event
                   key={faq.question}
                   className="group rounded-lg border border-ink/10 bg-surface p-4"
                 >
-                  <summary className="cursor-pointer list-none font-medium text-ink marker:content-none">
+                  <summary className="-m-4 cursor-pointer list-none rounded-lg p-4 font-medium text-ink transition-colors duration-150 marker:content-none hover:bg-ink/5">
                     <span className="flex items-center justify-between gap-3">
                       {faq.question}
                       <span aria-hidden className="text-ink/40 transition-transform group-open:rotate-45">

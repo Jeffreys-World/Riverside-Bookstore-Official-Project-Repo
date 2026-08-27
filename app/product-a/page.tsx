@@ -63,7 +63,7 @@ export default async function ProductAPage({
         </div>
         <Link
           href="/product-a/signup"
-          className="min-h-[44px] rounded-md border border-ink/20 px-4 py-2 text-sm font-medium text-ink hover:border-ink/40"
+          className="min-h-[44px] rounded-md border border-ink/20 px-4 py-2 text-sm font-medium text-ink transition-transform duration-150 hover:scale-105 hover:border-ink/40"
         >
           New customer? Create an account
         </Link>

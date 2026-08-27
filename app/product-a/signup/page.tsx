@@ -58,13 +58,13 @@ export default function SignUpPage() {
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
             href="/product-a"
-            className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper"
+            className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105"
           >
             Start browsing
           </Link>
           <Link
             href="/product-a/account"
-            className="min-h-[44px] rounded-md border border-ink/20 px-6 py-2 font-medium text-ink"
+            className="min-h-[44px] rounded-md border border-ink/20 px-6 py-2 font-medium text-ink transition-transform duration-150 hover:scale-105"
           >
             View my account
           </Link>
@@ -114,7 +114,7 @@ export default function SignUpPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="min-h-[44px] w-full rounded-md bg-accent px-6 py-2 font-medium text-paper disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-[44px] w-full rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
         >
           {submitting ? "Creating your account…" : "Create account"}
         </button>

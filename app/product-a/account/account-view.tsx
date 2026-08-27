@@ -145,7 +145,7 @@ export function AccountView() {
           <button
             type="submit"
             disabled={loading}
-            className="min-h-[44px] flex-none rounded-md bg-accent px-6 py-2 font-medium text-paper disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-[44px] flex-none rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
           >
             {loading ? "Loading…" : "View account"}
           </button>
@@ -238,7 +238,7 @@ export function AccountView() {
                 type="button"
                 onClick={handleBlindDate}
                 disabled={blindDate?.kind === "pending" || result.rewardPoints < BLIND_DATE_POINTS_COST}
-                className="mt-3 min-h-[44px] w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-3 min-h-[44px] w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
               >
                 {blindDate?.kind === "pending" ? "Revealing…" : `Redeem for ${BLIND_DATE_POINTS_COST} points`}
               </button>
@@ -267,7 +267,7 @@ export function AccountView() {
                     type="button"
                     onClick={handleDonate}
                     disabled={donation?.kind === "pending" || donation?.kind === "done"}
-                    className="mt-3 min-h-[44px] w-full rounded-md border border-ink/20 px-4 py-2 text-sm font-medium text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-3 min-h-[44px] w-full rounded-md border border-ink/20 px-4 py-2 text-sm font-medium text-ink transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
                   >
                     {donation?.kind === "pending" ? "Donating…" : `Donate ${result.rewardPoints} points`}
                   </button>

@@ -128,7 +128,7 @@ function StockRemoveControl({
         type="button"
         onClick={handleClick}
         disabled={disabled || pending}
-        className="min-h-[36px] flex-1 rounded-md border border-claret/30 px-2 py-1 text-xs font-medium text-claret disabled:cursor-not-allowed disabled:opacity-50"
+        className="min-h-[36px] flex-1 rounded-md border border-claret/30 px-2 py-1 text-xs font-medium text-claret transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
       >
         {pending ? "Removing…" : "Remove stock"}
       </button>
@@ -166,7 +166,7 @@ function DeleteListingControl({
         type="button"
         onClick={handleClick}
         disabled={pending}
-        className="min-h-[36px] w-full rounded-md border border-claret/50 bg-claret-soft px-2 py-1 text-xs font-medium text-claret disabled:cursor-not-allowed disabled:opacity-50"
+        className="min-h-[36px] w-full rounded-md border border-claret/50 bg-claret-soft px-2 py-1 text-xs font-medium text-claret transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
       >
         {pending ? "Removing…" : "Delete listing"}
       </button>
@@ -574,7 +574,7 @@ export function Dashboard({
                 type="button"
                 onClick={handleSearch}
                 disabled={searching}
-                className="min-h-[44px] flex-none rounded-md border border-ink/20 px-4 text-sm font-medium text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-[44px] flex-none rounded-md border border-ink/20 px-4 text-sm font-medium text-ink transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
               >
                 {searching ? "Searching…" : "Search"}
               </button>
@@ -589,7 +589,7 @@ export function Dashboard({
                     <button
                       type="button"
                       onClick={() => pickCandidate(c)}
-                      className="flex w-full items-center gap-3 rounded-md border border-ink/10 bg-field p-2 text-left hover:border-accent"
+                      className="flex w-full items-center gap-3 rounded-md border border-ink/10 bg-field p-2 text-left transition-transform duration-150 hover:scale-[1.02] hover:border-accent"
                     >
                       {c.coverUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -740,7 +740,7 @@ export function Dashboard({
             </div>
             <button
               type="submit"
-              className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper"
+              className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105"
             >
               Add book
             </button>
@@ -845,7 +845,7 @@ export function Dashboard({
             </div>
             <button
               type="submit"
-              className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper"
+              className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105"
             >
               Add merchandise
             </button>

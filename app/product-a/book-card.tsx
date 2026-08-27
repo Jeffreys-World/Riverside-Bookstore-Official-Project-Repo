@@ -104,7 +104,7 @@ export function BookCard(book: BookCardProps) {
           type="button"
           onClick={handleAdd}
           disabled={!orderable || atMax}
-          className="mt-2 min-h-[44px] rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-2 min-h-[44px] rounded-md bg-accent px-4 py-2 text-sm font-medium text-paper transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
         >
           {!orderable
             ? "Ask a bookseller"

@@ -86,7 +86,7 @@ export function ChatWidget() {
         <button
           type="submit"
           disabled={pending || !question.trim()}
-          className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-[44px] rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
         >
           Ask
         </button>
