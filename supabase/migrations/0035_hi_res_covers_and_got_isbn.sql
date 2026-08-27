@@ -25,23 +25,19 @@
 begin;
 
 -- 1. Game of Thrones ISBN correction -------------------------------------
--- Drop whatever FK sits on author_events.isbn by name (inline FKs are
--- auto-named author_events_isbn_fkey, but look it up so this can't drift).
+-- Drop the FK from author_events -> books (inline FKs are auto-named
+-- author_events_isbn_fkey; look it up by its target so this can't drift).
 do $$
 declare
   v_con text;
 begin
-  select con.conname into v_con
-    from pg_constraint con
-    join pg_class rel on rel.oid = con.conrelid
-   where rel.relname = 'author_events'
-     and con.contype = 'f'
-     and con.conkey = array[
-       (select attnum from pg_attribute
-         where attrelid = 'author_events'::regclass and attname = 'isbn')
-     ];
+  select conname into v_con
+    from pg_constraint
+   where conrelid = 'author_events'::regclass
+     and contype = 'f'
+     and confrelid = 'books'::regclass;
   if v_con is not null then
-    execute format('alter table author_events drop constraint %I', v_con);
+    execute 'alter table author_events drop constraint ' || quote_ident(v_con);
   end if;
 end $$;
 
