@@ -17,15 +17,23 @@ import type { Content, Part } from "@google/genai";
 import { generateTextWithFallback } from "@/lib/gemini";
 import { getServerClient } from "@/lib/supabase-server";
 import { productCToolDeclarations } from "@/lib/live-tools";
-import { evaluateStockStatus } from "@/lib/inventory";
+import { bookSearchOrFilter, evaluateStockStatus, merchSearchOrFilter } from "@/lib/inventory";
 import { formatEventTimestamp } from "@/types/schema";
 import { STORE_HOURS, STORE_POLICIES } from "@/lib/store-info";
 
 const SYSTEM_INSTRUCTION = `You are Riverside Books' customer support assistant.
 
-Use the provided tools for anything about current stock, an order's status, or
-upcoming events — never guess those from memory. For hours and policies, use
-the information below directly.
+Use the provided tools for anything about current stock, prices, an order's
+status, or upcoming events — never guess those from memory. For hours and
+policies, use the information below directly.
+
+check_inventory searches the live catalog. It covers both books (match by
+title, author, or ISBN) and the gift shop's cards and gifts (match by item
+name), and returns the current price plus stock status for every match. Use
+it for "do you have...", "how much is...", "anything by <author>", and
+"do you sell <card/gift>" questions alike. Prices are for information only —
+pre-orders and purchases are paid in person at the store, there is no online
+checkout.
 
 Store hours:
 ${STORE_HOURS}
@@ -34,8 +42,8 @@ Policies:
 ${STORE_POLICIES}
 
 Keep answers short and conversational. If a question is outside what you can
-check (stock, order status, events, hours, policies), say so plainly rather
-than making something up.
+check (stock, price, order status, events, hours, policies), say so plainly
+rather than making something up.
 
 If a tool result includes "lookup_failed": true, that means the lookup
 itself failed — it is NOT the same as an empty result. Tell the customer
@@ -64,32 +72,58 @@ async function executeTool(
     // rather than reject the query outright — a title with a comma or
     // parenthesis should still degrade to "no match" instead of erroring.
     const query = String(args.query ?? "").replace(/[,()]/g, "").trim();
-    if (!query) return { matches: [] };
+    if (!query) return { books: [], merchandise: [] };
 
-    const { data, error } = await supabase
-      .from("books")
-      .select("isbn, book_title, author_name, stock_quantity, cover_url")
-      .or(`isbn.eq.${query},book_title.ilike.%${query}%`)
-      .limit(5);
+    // Books match on title / author / ISBN; the gift shop's cards and
+    // gifts match on item name. Run both so one check_inventory call can
+    // answer "anything by Orwell?" and "do you sell bookmarks?" alike.
+    const [booksRes, merchRes] = await Promise.all([
+      supabase
+        .from("books")
+        .select("isbn, book_title, author_name, stock_quantity, price, cover_url")
+        .or(bookSearchOrFilter(query))
+        .limit(5),
+      supabase
+        .from("merchandise")
+        .select("item_name, category, stock_quantity, price")
+        .or(merchSearchOrFilter(query))
+        .limit(5),
+    ]);
 
-    if (error) {
-      console.error(`Product C check_inventory query failed: ${error.message}`);
-      return { matches: [], lookup_failed: true };
+    if (booksRes.error || merchRes.error) {
+      console.error(
+        `Product C check_inventory query failed: books=${booksRes.error?.message ?? "ok"} merch=${merchRes.error?.message ?? "ok"}`
+      );
+      return { books: [], merchandise: [], lookup_failed: true };
     }
 
-    const rows = data ?? [];
-    const flagged = evaluateStockStatus(
-      rows.map((b) => ({ id: b.isbn, stockQuantity: b.stock_quantity }))
+    const bookRows = booksRes.data ?? [];
+    const bookStatus = evaluateStockStatus(
+      bookRows.map((b) => ({ id: b.isbn, stockQuantity: b.stock_quantity }))
     );
     matchedBooks.push(
-      ...rows.map((b) => ({ isbn: b.isbn, book_title: b.book_title, cover_url: b.cover_url }))
+      ...bookRows.map((b) => ({ isbn: b.isbn, book_title: b.book_title, cover_url: b.cover_url }))
     );
+
+    const merchRows = merchRes.data ?? [];
+    const merchStatus = evaluateStockStatus(
+      merchRows.map((m, i) => ({ id: String(i), stockQuantity: m.stock_quantity }))
+    );
+
     return {
-      matches: rows.map((b, i) => ({
+      books: bookRows.map((b, i) => ({
         title: b.book_title,
         author: b.author_name,
+        price: b.price,
         stock_quantity: b.stock_quantity,
-        status: flagged[i]?.status,
+        status: bookStatus[i]?.status,
+      })),
+      merchandise: merchRows.map((m, i) => ({
+        name: m.item_name,
+        category: m.category,
+        price: m.price,
+        stock_quantity: m.stock_quantity,
+        status: merchStatus[i]?.status,
       })),
     };
   }
@@ -155,43 +189,50 @@ export async function askSupportChatbotAction(question: string): Promise<Support
   };
   const matchedBooks: SupportChatBook[] = [];
 
+  // The model can need more than one lookup to answer (e.g. its first
+  // check_inventory("greeting cards") comes back empty, so it retries with
+  // "card"). Loop until it stops asking for tools or we hit the cap —
+  // before this was a single round and any follow-up call left the
+  // customer with the generic "couldn't come up with an answer" fallback.
+  const MAX_TOOL_ROUNDS = 3;
+
   try {
-    const first = await generateTextWithFallback({ contents, config });
+    let response = await generateTextWithFallback({ contents, config }, { fast: true });
 
-    const calls = first.functionCalls;
-    if (!calls || calls.length === 0) {
-      return {
-        answer: first.text ?? "Sorry, I couldn't come up with an answer just now.",
-        books: [],
-      };
+    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+      const calls = response.functionCalls;
+      if (!calls || calls.length === 0) break;
+
+      // Replay the model's actual response content, not a reconstruction
+      // from response.functionCalls — that getter returns bare
+      // FunctionCall objects and drops the sibling thoughtSignature field
+      // each Part carries. The fast lane's fallback chain still includes
+      // the "thinking" gemini-3.x-flash models, which 400 with "Function
+      // call is missing a thought_signature" if that signature isn't
+      // echoed back on the next turn. gemini-flash-lite-latest carries no
+      // signature and the `?? calls.map(...)` branch covers it.
+      const modelParts: Part[] =
+        response.candidates?.[0]?.content?.parts ?? calls.map((call) => ({ functionCall: call }));
+      contents.push({ role: "model", parts: modelParts });
+
+      const responseParts: Part[] = [];
+      for (const call of calls) {
+        const result = await executeTool(
+          call.name ?? "",
+          (call.args ?? {}) as Record<string, unknown>,
+          matchedBooks
+        );
+        responseParts.push({
+          functionResponse: { name: call.name ?? "", response: { result } },
+        });
+      }
+      contents.push({ role: "user", parts: responseParts });
+
+      response = await generateTextWithFallback({ contents, config }, { fast: true });
     }
 
-    // Replay the model's actual response content, not a reconstruction
-    // from first.functionCalls — that getter returns bare FunctionCall
-    // objects and drops the sibling thoughtSignature field each Part
-    // carries. gemini-3.6-flash is a "thinking" model that requires that
-    // signature to be echoed back on the next turn; omitting it 400s with
-    // "Function call is missing a thought_signature".
-    const modelParts: Part[] =
-      first.candidates?.[0]?.content?.parts ?? calls.map((call) => ({ functionCall: call }));
-    contents.push({ role: "model", parts: modelParts });
-
-    const responseParts: Part[] = [];
-    for (const call of calls) {
-      const result = await executeTool(
-        call.name ?? "",
-        (call.args ?? {}) as Record<string, unknown>,
-        matchedBooks
-      );
-      responseParts.push({
-        functionResponse: { name: call.name ?? "", response: { result } },
-      });
-    }
-    contents.push({ role: "user", parts: responseParts });
-
-    const second = await generateTextWithFallback({ contents, config });
     return {
-      answer: second.text ?? "Sorry, I couldn't come up with an answer just now.",
+      answer: response.text ?? "Sorry, I couldn't come up with an answer just now.",
       books: dedupeBooks(matchedBooks),
     };
   } catch (err) {

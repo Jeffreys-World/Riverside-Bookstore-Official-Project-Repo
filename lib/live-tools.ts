@@ -111,11 +111,15 @@ export const productBToolDeclarations: FunctionDeclaration[] = [
 export const productCToolDeclarations: FunctionDeclaration[] = [
   {
     name: "check_inventory",
-    description: "Query real-time stock quantity for a book title or ISBN.",
+    description:
+      "Search the live catalog for current stock status and price. Covers books (match by title, author name, or 13-digit ISBN) and gift shop merchandise (cards and gifts, match by item name). Returns price and stock status for every match.",
     parameters: {
       type: Type.OBJECT,
       properties: {
-        query: { type: Type.STRING, description: "Book title or 13-digit ISBN" },
+        query: {
+          type: Type.STRING,
+          description: "A book title, author name, ISBN, or the name of a card/gift item.",
+        },
       },
       required: ["query"],
     },

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { evaluateStockStatus, sortBySeverity } from "./inventory";
+import {
+  bookSearchOrFilter,
+  evaluateStockStatus,
+  merchSearchOrFilter,
+  sortBySeverity,
+} from "./inventory";
 
 describe("evaluateStockStatus", () => {
   it('flags 0 as "out_of_stock"', () => {
@@ -66,5 +71,41 @@ describe("sortBySeverity", () => {
     const inputCopy = [...input];
     sortBySeverity(input);
     expect(input).toEqual(inputCopy);
+  });
+});
+
+describe("bookSearchOrFilter", () => {
+  // The support chatbot (app/product-c/actions.ts) answered "we don't
+  // carry that" for in-stock books when asked by author, because its
+  // PostgREST .or() filter only matched ISBN + title. This guards the fix.
+  it("matches on ISBN, title, AND author", () => {
+    const f = bookSearchOrFilter("George Orwell");
+    expect(f).toContain("isbn.eq.George Orwell");
+    expect(f).toContain("book_title.ilike.%George Orwell%");
+    expect(f).toContain("author_name.ilike.%George Orwell%");
+  });
+
+  it("is a single comma-joined .or() argument list", () => {
+    expect(bookSearchOrFilter("1984").split(",")).toHaveLength(3);
+  });
+});
+
+describe("merchSearchOrFilter", () => {
+  it('de-pluralises words so "greeting cards" matches "...Greeting Card..."', () => {
+    const f = merchSearchOrFilter("greeting cards");
+    expect(f).toContain("item_name.ilike.%greeting%");
+    expect(f).toContain("item_name.ilike.%card%"); // "cards" -> "card"
+  });
+
+  it('maps the word "card" / "gift" to the category', () => {
+    expect(merchSearchOrFilter("do you sell cards")).toContain("category.eq.card");
+    expect(merchSearchOrFilter("any gifts?".replace(/[,()?]/g, ""))).toContain("category.eq.gift");
+  });
+
+  it("keeps the whole-phrase match and skips short filler words", () => {
+    const f = merchSearchOrFilter("a tote bag");
+    expect(f).toContain("item_name.ilike.%a tote bag%");
+    expect(f).toContain("item_name.ilike.%tote%");
+    expect(f).not.toContain("ilike.%a%"); // "a" is too short to add as its own clause
   });
 });

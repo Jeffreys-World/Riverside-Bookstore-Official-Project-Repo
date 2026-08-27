@@ -80,3 +80,39 @@ export function fulfillmentBadgeFor(
   }
   return { label: "Pre-Order", tone: "pending" };
 }
+
+/**
+ * PostgREST `.or()` filter for the support chatbot's book search
+ * (app/product-c/actions.ts). A customer asks "do you have anything by
+ * <author>" as often as they ask for a title, so all three of ISBN,
+ * title, and author are matched — dropping `author_name` here is exactly
+ * the gap that made the chatbot answer "we don't carry that" for books it
+ * stocks. The caller has already stripped `,` `(` `)` (the characters that
+ * break `.or()` syntax) from `query`.
+ */
+export function bookSearchOrFilter(query: string): string {
+  return [
+    `isbn.eq.${query}`,
+    `book_title.ilike.%${query}%`,
+    `author_name.ilike.%${query}%`,
+  ].join(",");
+}
+
+/**
+ * PostgREST `.or()` filter for the support chatbot's card/gift search.
+ * Item names are specific ("Blank Greeting Card — Birthday"), so a whole-
+ * phrase `ilike` on "greeting cards" misses them. Match each meaningful
+ * word (de-pluralised so "cards" hits "Card"), and map the words "card"
+ * and "gift" straight to the category so "do you sell gifts" lists the
+ * whole category. Caller has already stripped `,` `(` `)`.
+ */
+export function merchSearchOrFilter(query: string): string {
+  const lower = query.toLowerCase();
+  const clauses = new Set<string>([`item_name.ilike.%${query}%`]);
+  for (const word of lower.split(/\s+/)) {
+    if (word.length > 3) clauses.add(`item_name.ilike.%${word.replace(/s$/, "")}%`);
+  }
+  if (/cards?/.test(lower)) clauses.add("category.eq.card");
+  if (/gifts?/.test(lower)) clauses.add("category.eq.gift");
+  return [...clauses].join(",");
+}

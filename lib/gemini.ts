@@ -18,6 +18,17 @@ import { ApiError, GoogleGenAI, type GenerateContentParameters, type GenerateCon
 // change frequently, so re-verify before assuming this is still current.
 export const TEXT_MODEL = process.env.GEMINI_TEXT_MODEL ?? "gemini-3.6-flash";
 
+// Fast lane for latency-sensitive callers (Product C's support chatbot,
+// which makes TWO sequential generateContent calls per answer for its
+// function-call round trip). gemini-3.6-flash is a "thinking" model: it
+// spends 50-65 thinking tokens and ~2.5s PER call deciding how to route a
+// trivial "is X in stock" question, so the chatbot took ~5.7s end to end.
+// gemini-flash-lite-latest does the same round trip in ~1s with zero
+// thinking tokens and an equally good answer (measured 2026-08-27).
+// Product D (marketing copy) deliberately stays on TEXT_MODEL — there the
+// extra reasoning is worth the wait.
+export const FAST_TEXT_MODEL = process.env.GEMINI_FAST_MODEL ?? "gemini-flash-lite-latest";
+
 // Demo-day backup chain for generateTextWithFallback(). Google doesn't
 // publish per-model free-tier numbers (they're only visible per-account in
 // the AI Studio dashboard), but the 429 payload itself confirms the quota
@@ -43,6 +54,16 @@ const FALLBACK_TEXT_MODELS = [
   "gemini-flash-lite-latest",
   "gemini-3.5-flash-lite",
   "gemini-flash-latest",
+];
+
+// Backup chain for the fast lane. Other lite variants first, then the
+// heavier flash models only as a last resort — a slow answer beats no
+// answer if lite's daily quota is burned.
+const FALLBACK_FAST_MODELS = [
+  "gemini-3.5-flash-lite",
+  "gemini-flash-latest",
+  "gemini-3.6-flash",
+  "gemini-3.5-flash",
 ];
 
 let client: GoogleGenAI | null = null;
@@ -76,18 +97,23 @@ function isRetryableAcrossModels(err: unknown): boolean {
 }
 
 /**
- * Same call as ai.models.generateContent(), but walks TEXT_MODEL then
- * FALLBACK_TEXT_MODELS in order, using the first one that doesn't fail
- * with a retryable error. Both call sites in one multi-turn exchange
- * (Product C's function-calling round trip) naturally land on the same
- * model, since the quota state that picked the fallback doesn't change
- * between those calls milliseconds apart.
+ * Same call as ai.models.generateContent(), but walks a model list in
+ * order, using the first one that doesn't fail with a retryable error.
+ * `opts.fast` picks the FAST_TEXT_MODEL lane (Product C's chatbot);
+ * everything else gets the default TEXT_MODEL lane (Product D). Both call
+ * sites in one multi-turn exchange (Product C's function-calling round
+ * trip) naturally land on the same model, since the quota state that
+ * picked the fallback doesn't change between those calls milliseconds
+ * apart.
  */
 export async function generateTextWithFallback(
-  params: Omit<GenerateContentParameters, "model">
+  params: Omit<GenerateContentParameters, "model">,
+  opts: { fast?: boolean } = {}
 ): Promise<GenerateContentResponse> {
   const ai = getGeminiClient();
-  const models = [TEXT_MODEL, ...FALLBACK_TEXT_MODELS];
+  const models = opts.fast
+    ? [FAST_TEXT_MODEL, ...FALLBACK_FAST_MODELS]
+    : [TEXT_MODEL, ...FALLBACK_TEXT_MODELS];
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i]!;
