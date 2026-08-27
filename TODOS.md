@@ -48,28 +48,206 @@ findings; fixed the 3 High, all Medium, and most Low in `main`
 Apply each in the Supabase dashboard SQL editor, then from the repo root:
 `npx supabase migration repair --status applied 0037` (and `0038`).
 
-### Still open (low severity — not yet fixed)
-- **Mutating Product A actions trust a client `customer_id`** with no
-  session-ownership check (`actions.ts` checkout/redeemBlindDate/donatePoints,
-  `events/actions.ts` rsvp). Downgraded (documented pre-auth model + Next CSRF),
-  but donate/blind-date are irreversible on a shared kiosk. Fix: route through
-  `resolveCustomerId({ passedId })` so a session wins and a mismatch is rejected.
-- **Duplicate-email signup** dead-ends on the "check your email" screen when
-  Supabase email confirmations are ON (`actions.ts` `customerSignUpAction`) —
-  detect the obfuscated existing-user shape and redirect to `?error=`.
-- **Account-page auth tabs** navigate off `/product-a/account` on any error —
-  give the embedded forms `useActionState` inline errors.
-- **Sign-up silently adopts a stale localStorage `customer_id`** on shared
-  devices (`components/claim-id-field.tsx`) — make adoption an explicit opt-in.
-- **Product B**: no way to *raise* a stock count or edit a price from the
-  dashboard (only decrement/delete); `page.tsx` still redirects on a genuine
-  `is_staff()` error rather than showing an inline retry.
-- **Product C**: rotating progress message still re-announces (moved out of the
-  log but shares a polite region); `role=tablist` on the FAQ accordion parent.
-- **Dark mode**: `box-shadow` invisible on near-black surfaces (dropdowns got a
-  border bump; drawers still lean on the scrim); this is cosmetic.
-- **`stripMarkdownEmphasis`** `_` rule now word-bounded but `*` rule is still
-  greedy (lower risk — models rarely emit intraword asterisks).
+### Still open (low severity)
+
+Broken out as individual entries immediately below this one (all tagged
+`2026-08-27 sweep`), newest-first:
+
+1. Mutating Product A actions trust a client `customer_id`
+2. Duplicate-email sign-up dead-ends on "check your email"
+3. Account-page auth tabs navigate off the page on any error
+4. Sign-up silently adopts a stale localStorage `customer_id`
+5. Product B: no raise-stock / edit-price control; `is_staff()` error redirects
+6. Product C: pending indicator re-announces; FAQ accordion isn't a real tablist
+7. Dark mode: `box-shadow` invisible on near-black surfaces
+8. `stripMarkdownEmphasis` `*` rule is still greedy
+
+---
+
+## [2026-08-27 sweep] Mutating Product A actions trust a client-supplied `customer_id`
+
+**What:** `checkoutAction`, `redeemBlindDateAction`, `donatePointsAction`
+(`app/product-a/actions.ts`) and `rsvpToEventAction` (`app/product-a/events/actions.ts`)
+format-validate `customer_id` against `CUSTOMER_ID_REGEX` and then pass it straight
+into a service-role RPC. None resolve the caller's Supabase Auth session or check
+that the session owns that id.
+
+**Why:** Downgraded during the sweep's verify pass — it's the documented pre-auth
+"knowing the id is the credential" model (`0034` comment), and Next.js server-action
+CSRF protection limits the practical exploit to a shared device or an already-authed
+same-origin user. But `donate_points` (zeroes the whole balance) and
+`redeem_blind_date` (spends 250 points) are irreversible with no rate limiting, and
+on a shared library/kiosk browser customer A's id persists in localStorage after they
+leave.
+
+**Fix:** In each mutating action call `resolveCustomerId({ passedId: clientId })`
+(`lib/customer-session`) — when a session exists it must win, and a passed id that
+disagrees with the session must be rejected. Keep the raw-passed-id path only for the
+signed-out pre-auth flow and the explicit server-to-server kiosk branch
+(`app/api/live/execute-tool/route.ts`). `getAccountAction` already demonstrates the
+pattern via `resolveCustomer()`.
+
+**Effort:** M — 4 call sites + a browser pass through checkout / RSVP / donate / blind-date
+while signed in and signed out.
+**Priority:** P2
+
+---
+
+## [2026-08-27 sweep] Duplicate-email sign-up dead-ends on the "check your email" screen
+
+**What:** `customerSignUpAction` (`app/product-a/actions.ts`) branches only on
+`error` then `!data.session`. With Supabase "Confirm email" ON, `signUp` for an
+already-registered address returns a populated obfuscated `data.user`, `session`
+null, and no error (GoTrue anti-enumeration) — so the action redirects to
+`/product-a/signup?pending=1`, telling an existing customer to open a confirmation
+link that never arrives.
+
+**Why:** Found in the 2026-08-27 sweep (finding 41). `authErrorMessage()` already
+has the correct "That email is already registered. Try signing in instead." branch
+(`lib/customer-auth.ts:41`) but it's unreachable in this config. With confirmations
+OFF (the recommended config for this pay-in-person shop) the duplicate returns a real
+error and is handled correctly — so this only bites if email confirmation is enabled.
+
+**Fix:** After `signUp`, detect the obfuscated-existing-user shape (`data.user` with
+an empty `identities` array, or `user.email_confirmed_at` already set) and redirect to
+`/product-a/signup?error=<already-registered copy>` instead of `?pending=1`.
+
+**Effort:** S
+**Priority:** P3
+
+---
+
+## [2026-08-27 sweep] Account-page auth tabs navigate the user off the page on any error
+
+**What:** The signed-out account screen's Sign in / Create account tabs
+(`app/product-a/account/account-view.tsx`) post directly to
+`customerSignInAction` / `customerSignUpAction`, which `redirect()` to
+`/product-a/login|signup?error=…` on failure — bouncing a user who mistyped on the
+embedded form over to the dedicated page. Neither embedded form renders an inline
+error, and the embedded signup form omits the `next` hidden field.
+
+**Why:** Found in the 2026-08-27 sweep (finding 42). Minor — the error still shows on
+the destination page and a later successful submit lands back on `/product-a/account`
+— only the account-page tab context is lost.
+
+**Fix:** Give the embedded forms `useActionState`-based inline error handling that
+keeps the user on `/product-a/account`; add the `next` hidden field for consistency
+with `signup/page.tsx`.
+
+**Effort:** S
+**Priority:** P3
+
+---
+
+## [2026-08-27 sweep] Sign-up silently adopts a stale localStorage `customer_id`
+
+**What:** `ClaimIdField` (`components/claim-id-field.tsx`) writes whatever
+`loadCustomerId()` returns into a hidden `claim_id` field with no user-visible
+indication. `customerSignUpAction` validates only the format and passes it to
+`get_or_create_my_customer`, which links it to the new auth user whenever it's a
+well-formed, still-unclaimed `cust_XXXXX`. On a store kiosk / demo laptop that still
+holds `cust_demo01` (or a prior visitor's id), a brand-new customer silently inherits
+that account's points and order history.
+
+**Why:** Found in the 2026-08-27 sweep (finding 45). Narrow and partly by-design —
+the `auth_user_id IS NULL` guard means only the *first* signup on a machine holding a
+stale unclaimed id inherits it, and `account-view.tsx` shows a "we linked your
+existing Riverside account" banner after the fact.
+
+**Fix:** Make adoption explicit — render the detected id on the signup form with an
+opt-in checkbox ("Link my existing customer ID cust_…") and only send `claim_id` when
+checked; or only auto-adopt ids this browser actually created in this app.
+
+**Effort:** S–M
+**Priority:** P3
+
+---
+
+## [2026-08-27 sweep] Product B: no raise-stock / edit-price control; `is_staff()` error redirects
+
+**What:** Two related gaps on the staff dashboard (`app/product-b/`):
+1. `StockRemoveControl` is decrement-only and `DeleteListingControl` fails on the
+   `orders.isbn` FK for any title with order history — so a price typed wrong or a
+   stock count typed too low (or a genuine restock) on an ordered title can't be
+   fixed in-app at all. The `0032` staff UPDATE policy already permits it.
+2. `page.tsx` (now via `requireStaffPage()` in `lib/staff-auth.ts`) redirects to
+   `/product-a` on a genuine `is_staff()` RPC error — the sweep fixed
+   `requireStaffPage` to redirect to sign-in with a retry message instead of the
+   storefront, but an inline "couldn't verify — retry" state (no redirect) would be
+   better.
+
+**Why:** Found in the 2026-08-27 sweep (findings 6, 3). Both low-severity; the memory
+note about two seed books stuck at `price 0.00` is the concrete motivation for (1).
+
+**Fix:** (1) Add a "set stock to N" control and a price-edit control (new small RPCs
+or a direct `.update()` under the `0032` policy). (2) In `requireStaffPage`, on a
+non-null RPC error render an inline retry state rather than redirecting.
+
+**Effort:** M
+**Priority:** P3
+
+---
+
+## [2026-08-27 sweep] Product C: pending indicator re-announces; FAQ accordion isn't a real tablist
+
+**What:** Two small a11y items in `app/product-c/`:
+1. `chat-widget.tsx` — the rotating "Checking… / Looking that up…" indicator was
+   moved out of `role="log"` (sweep commit `c0f1ca3`) but still sits in its own
+   `aria-live="polite"` region, so each 4s rotation is still announced. Give it a
+   single static label during the wait, or `aria-live="off"` with one announcement on
+   start/finish.
+2. `support-tabs.tsx` got a full `role="tablist"` (sweep commit `e4413a7`), but the
+   FAQ "Common questions" block is a grid of native `<details>` — fine as-is, just
+   noting it's intentionally not ARIA-tabbed.
+
+**Why:** Found in the 2026-08-27 sweep (finding 24). Screen-reader-only noise, no
+functional impact.
+
+**Fix:** Item 1 only — swap the pending `<p>` for a non-live label, or announce once.
+
+**Effort:** S
+**Priority:** P4
+
+---
+
+## [2026-08-27 sweep] Dark mode: box-shadow invisible on near-black surfaces
+
+**What:** All Tailwind shadow utilities are `rgb(0 0 0 / 0.1)` with no `.dark`
+variant, so on the dark theme's near-black surfaces they contribute nothing. The
+sweep bumped the nav dropdown borders (`border-ink/15 dark:border-ink/30`, commit
+`8257075`), but cards (`hover:shadow-lg`) and drawers (`shadow-xl`) still lean on an
+invisible shadow in dark mode — drawers are saved by the scrim contrast edge, cards
+by their `translate`/`scale` hover.
+
+**Why:** Found in the 2026-08-27 sweep (finding 30). Cosmetic — every element keeps a
+secondary separation cue.
+
+**Fix:** Add a dark-mode shadow treatment (set `--tw-shadow-color` to a stronger
+translucent black under `.dark`, or a subtle light ring), or bump card/drawer
+container borders the way the dropdowns were bumped.
+
+**Effort:** S
+**Priority:** P4
+
+---
+
+## [2026-08-27 sweep] `stripMarkdownEmphasis` `*` rule is still greedy
+
+**What:** `lib/markdown.ts` — the sweep (commit `280d755`) word-bounded the `_`
+italic rule so multi-underscore hashtags/handles (`#cozy_autumn_reads`) survive, but
+the `*` / `**` rules are still unbounded `/\*(.+?)\*/g`. An Instagram caption
+containing a literal `*` or a `*`-delimited list would be mangled.
+
+**Why:** Found in the 2026-08-27 sweep (finding 15, `*` half). Lower risk than the
+underscore case — flash models rarely emit intraword or list asterisks in this
+prompt's output, and the existing `markdown.test.ts` cases pin the current `*`
+behavior.
+
+**Fix:** Apply the same word-boundary constraint to the `*` rules, updating
+`markdown.test.ts` in step.
+
+**Effort:** S
+**Priority:** P4
 
 ---
 
