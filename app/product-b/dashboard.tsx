@@ -278,13 +278,55 @@ export function Dashboard({
     setSearchResults(null);
   }
 
+  // postgres_changes never replays events missed while the socket was
+  // down, and the orders list is otherwise only ever grown by live
+  // INSERTs — so a pre-order placed during the SSR→SUBSCRIBED gap or any
+  // reconnect window would be silently absent from the queue until a full
+  // reload. On every reconnect, re-pull the authoritative current set.
+  async function resyncOrders() {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("order_id, customer_id, isbn, quantity, order_status, created_at")
+      .eq("order_status", "preorder")
+      .order("created_at", { ascending: false });
+    if (error || !data) return;
+    setOrders((prev) => {
+      const known = new Set(prev.map((o) => o.order_id));
+      const missed = data.filter((o) => !known.has(o.order_id));
+      if (missed.length > 0) {
+        setAnnouncement(
+          `Reconnected — ${missed.length} pre-order${missed.length === 1 ? "" : "s"} synced`
+        );
+      }
+      return data as OrderRow[];
+    });
+  }
+
+  async function resyncBooks() {
+    const { data, error } = await supabase
+      .from("books")
+      .select("isbn, book_title, author_name, stock_quantity, cover_url, price");
+    if (error || !data) return;
+    setBooksByIsbn(Object.fromEntries((data as BookRow[]).map((b) => [b.isbn, b])));
+  }
+
+  async function resyncMerchandise() {
+    const { data, error } = await supabase
+      .from("merchandise")
+      .select("id, item_name, category, price, stock_quantity, image_url");
+    if (error || !data) return;
+    setMerchandiseById(Object.fromEntries((data as MerchandiseRow[]).map((m) => [m.id, m])));
+  }
+
   const ordersStatus = useRealtimeSubscription(
     supabase,
     "product-b-orders",
     { event: "INSERT", schema: "public", table: "orders", filter: "order_status=eq.preorder" },
     (payload) => {
       const row = payload.new as unknown as OrderRow;
-      setOrders((prev) => [row, ...prev]);
+      setOrders((prev) =>
+        prev.some((o) => o.order_id === row.order_id) ? prev : [row, ...prev]
+      );
       setAnnouncement(`New pre-order: ${row.order_id}`);
       setJustArrived((prev) => new Set(prev).add(row.order_id));
       setTimeout(() => {
@@ -294,7 +336,8 @@ export function Dashboard({
           return next;
         });
       }, ARRIVAL_HIGHLIGHT_MS);
-    }
+    },
+    resyncOrders
   );
 
   const booksStatus = useRealtimeSubscription(
@@ -317,7 +360,8 @@ export function Dashboard({
       }
       const row = payload.new as unknown as BookRow;
       setBooksByIsbn((prev) => ({ ...prev, [row.isbn]: row }));
-    }
+    },
+    resyncBooks
   );
 
   const merchandiseStatus = useRealtimeSubscription(
@@ -337,7 +381,8 @@ export function Dashboard({
       }
       const row = payload.new as unknown as MerchandiseRow;
       setMerchandiseById((prev) => ({ ...prev, [row.id]: row }));
-    }
+    },
+    resyncMerchandise
   );
 
   const reconnecting =
