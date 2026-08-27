@@ -14,6 +14,32 @@ and `addMerchandiseRequestSchema` now carries an explicit message (e.g. "ISBN mu
 
 ---
 
+## Real customer accounts (Supabase Auth email/password) for Product A
+
+**What:** Replace the cosmetic sign-up (which minted a `cust_XXXXX` and remembered it in
+localStorage) with real email/password auth via Supabase Auth. Sign in / sign up / log out on
+`/product-a/login`, `/product-a/signup`, the "My Account" nav dropdown, and a tabbed Sign in /
+Create account panel on the signed-out account screen. Session resolves to a `customer_id`
+server-side (`get_or_create_my_customer()`), which is mirrored into the existing localStorage key
+so checkout / events RSVP / blind-date / donate keep working through their untouched server
+actions. A first-time signup adopts an unclaimed localStorage `cust_` id so a returning customer
+keeps their points + order history.
+
+**Status: Done (2026-08-27).** `0034_customer_auth.sql` applied to the live DB (adds
+`customers.auth_user_id` + `customers.email`, both nullable; `get_or_create_my_customer(p_claim)`
+SECURITY DEFINER reading `auth.uid()` like `is_staff()`). `cust_demo01` linked to a demo login via
+`scripts/backfill-customer-demo.mjs`. Staff and customer share one auth cookie — `/product-b` now
+re-checks `is_staff()` per load instead of signing non-staff sessions out. Plan +
+eng/design/outside-voice review in `docs/designs/2026-08-27-customer-auth.md`. tsc/lint/vitest
+green (6 new customer-auth tests + 4 credential-schema tests). Scoped to "auth core + logged-in
+polish" — the RLS-tightening follow-up below is the deliberate next step.
+
+**Verify live after deploy:** a brand-new-email signup (exercises the fresh `customers` INSERT
+mint path, not run against the live DB yet) → should land on `/product-a/account`, 0 points, no
+orders.
+
+---
+
 ## Tighten customer-data RLS to the authenticated identity
 
 **What:** Re-scope `get_loyalty_balance` / `get_customer_orders` (and any sibling customer-data
