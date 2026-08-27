@@ -14,6 +14,78 @@ and `addMerchandiseRequestSchema` now carries an explicit message (e.g. "ISBN mu
 
 ---
 
+## Tighten customer-data RLS to the authenticated identity
+
+**What:** Re-scope `get_loyalty_balance` / `get_customer_orders` (and any sibling customer-data
+reads) to `auth.uid()` instead of `anon` + a `p_customer_id text` param. Add `auth.uid()`-scoped
+variants (`get_my_loyalty_balance()` / `get_my_orders()`) that the web server actions call when a
+session exists; keep the `p_customer_id text` versions only for the voice kiosk's service-role path
+and drop their `anon` grant.
+
+**Why:** After the 2026-08-27 customer-auth work, login is an identity + convenience layer, not a
+data boundary. Knowing any `cust_XXXXX` still lets an unauthenticated caller read that account's
+orders and reward points directly via the anon RPC (`0002_rls_and_functions.sql` grants, untouched
+by `0012`), and `checkoutAction` still accepts an unauthenticated client-passed `customer_id` (can
+place orders / earn points / decrement stock for an arbitrary customer). Pre-existing exposure, not
+made worse by the auth change — but the auth change is the natural moment to close it.
+
+**Context:** Flagged by `/plan-eng-review` + its outside-voice pass on 2026-08-27 (findings #7, and
+the RLS-tightening TODO question — deferred by the user to keep that PR at "auth core + logged-in
+polish" size). The customer-auth PR adds `customers.auth_user_id`, so the `auth.uid()` → `customer_id`
+lookup this needs will already exist. Start in `supabase/migrations/` with the new RPC variants,
+then point `getAccountAction` / `checkoutAction` at them for the session case.
+
+**Effort:** M
+**Priority:** P2
+**Depends on:** The 2026-08-27 customer-auth PR (`customers.auth_user_id` column + `get_or_create_my_customer()`).
+
+---
+
+## Add `middleware.ts` for Supabase session refresh
+
+**What:** Add a root `middleware.ts` that runs `supabase.auth.getUser()` to refresh the session
+cookie ahead of render (the documented Supabase SSR + Next.js App Router pattern), and stop
+`getServerClient()` from swallowing the `set()` / `remove()` cookie-write errors it currently
+try/catches.
+
+**Why:** There's no middleware today, so `getServerClient()` (`lib/supabase-server.ts:40-61`) can't
+persist a refreshed token from a Server Component and swallows the error. Fine for short staff
+sessions; after customer auth lands, customers browse longer, so a session that expires mid-visit
+won't refresh until the next Server Action — a read-only staleness window (one navigation,
+self-corrects). Also removes the flash-of-logged-out-state on statically-shelled pages.
+
+**Context:** Flagged by `/plan-eng-review` on 2026-08-27 (deferred by the user from the customer-auth
+PR). Low-risk in isolation (~1 file) but it touches the shared server client that staff auth also
+depends on, so it wants its own verification pass: after adding it, re-test staff sign-in / sign-out
+and the Product B dashboard, plus the new customer login / logout.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** None (independent of the customer-auth PR, but more valuable after it).
+
+---
+
+## Add a `prefers-reduced-motion` guard to globals.css
+
+**What:** Add one `@media (prefers-reduced-motion: reduce)` block in `app/globals.css` `@layer base`
+that neutralizes the app-wide transitions/transforms (`transition-transform`, `hover:scale-105`,
+`hover:scale-125`, the theme/StampBadge transitions) for users who ask for reduced motion.
+
+**Why:** Commit `b82eb27` applied `hover:scale` feedback to every clickable control app-wide, and
+nothing respects `prefers-reduced-motion`. `design.md`'s own quality floor calls this
+"non-negotiable regardless of how much time is left." Flagged during `/plan-design-review` on
+2026-08-27 while reviewing the customer-auth plan — the new auth screens inherit the same
+un-guarded classes, so it's consistently wrong, not newly wrong.
+
+**Context:** `globals.css` is only 37 lines; the fix is a single `@media` block, e.g.
+`@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; transform: none !important; } }` — scoped carefully so it doesn't break layout transforms. Verify with the OS "reduce motion" setting on and a hover pass over nav tabs, cards, and buttons.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** None.
+
+---
+
 ## Build a real staff Supabase Auth role/claim system
 
 **What:** Replace the seeded-user gate (used for the Product A+B live-sync phase) with a proper `staff` role/claim, RLS policies keyed to it, and a real sign-in flow.
