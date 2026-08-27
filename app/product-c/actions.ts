@@ -17,7 +17,12 @@ import type { Content, Part } from "@google/genai";
 import { generateTextWithFallback } from "@/lib/gemini";
 import { getServerClient } from "@/lib/supabase-server";
 import { productCToolDeclarations } from "@/lib/live-tools";
-import { bookSearchOrFilter, evaluateStockStatus, merchSearchOrFilter } from "@/lib/inventory";
+import {
+  availabilityNoteFor,
+  bookSearchOrFilter,
+  evaluateStockStatus,
+  merchSearchOrFilter,
+} from "@/lib/inventory";
 import { formatEventTimestamp } from "@/types/schema";
 import { STORE_HOURS, STORE_POLICIES } from "@/lib/store-info";
 
@@ -29,11 +34,13 @@ policies, use the information below directly.
 
 check_inventory searches the live catalog. It covers both books (match by
 title, author, or ISBN) and the gift shop's cards and gifts (match by item
-name), and returns the current price plus stock status for every match. Use
-it for "do you have...", "how much is...", "anything by <author>", and
-"do you sell <card/gift>" questions alike. Prices are for information only —
-pre-orders and purchases are paid in person at the store, there is no online
-checkout.
+name), and returns the current price plus a plain-language "availability"
+note for every match. Use it for "do you have...", "how much is...",
+"anything by <author>", and "do you sell <card/gift>" questions alike.
+Relay the availability note as written — do not quote copy counts or
+internal status codes, and do not invent numbers. Prices are for
+information only — pre-orders and purchases are paid in person at the
+store, there is no online checkout.
 
 Store hours:
 ${STORE_HOURS}
@@ -62,7 +69,7 @@ async function executeTool(
   args: Record<string, unknown>,
   // Covers for any books check_inventory actually matched, kept separate
   // from the tool response text below — the model only needs
-  // title/author/stock/status to answer, never the raw image URL.
+  // title/author/price/availability to answer, never the raw image URL.
   matchedBooks: SupportChatBook[]
 ): Promise<unknown> {
   const supabase = getServerClient();
@@ -110,20 +117,22 @@ async function executeTool(
       merchRows.map((m, i) => ({ id: String(i), stockQuantity: m.stock_quantity }))
     );
 
+    // Hand the model a plain-English availability line, not the raw
+    // StockStatus enum or a copy count — it was relaying "needs_attention"
+    // verbatim to customers, and any exact count is stale the moment
+    // create_preorder runs at checkout.
     return {
       books: bookRows.map((b, i) => ({
         title: b.book_title,
         author: b.author_name,
         price: b.price,
-        stock_quantity: b.stock_quantity,
-        status: bookStatus[i]?.status,
+        availability: availabilityNoteFor(bookStatus[i]?.status ?? "needs_attention"),
       })),
       merchandise: merchRows.map((m, i) => ({
         name: m.item_name,
         category: m.category,
         price: m.price,
-        stock_quantity: m.stock_quantity,
-        status: merchStatus[i]?.status,
+        availability: availabilityNoteFor(merchStatus[i]?.status ?? "needs_attention", "merch"),
       })),
     };
   }

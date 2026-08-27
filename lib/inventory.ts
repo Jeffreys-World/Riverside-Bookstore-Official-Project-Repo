@@ -82,6 +82,45 @@ export function fulfillmentBadgeFor(
 }
 
 /**
+ * Plain-English availability line for the support chatbot (Product C). The
+ * raw StockStatus values ("needs_attention", "out_of_stock", …) are internal
+ * codes — the model was quoting them verbatim to customers ("its stock
+ * status is currently showing as needs_attention"). This maps each one to a
+ * sentence a customer can read. Books lean on the catalog's Reserve/Pre-Order
+ * framing (fulfillmentBadgeFor); merchandise (cards/gifts) is in-store browse
+ * only, never part of pre-order, so it gets its own wording. Deliberately
+ * says nothing about exact copy counts: create_preorder enforces stock at
+ * checkout, so a "we have 3" promise here could be stale on arrival.
+ */
+export function availabilityNoteFor(
+  status: StockStatus,
+  kind: "book" | "merch" = "book"
+): string {
+  if (kind === "merch") {
+    switch (status) {
+      case "in_stock":
+        return "on the shelf in store now";
+      case "low_stock":
+        return "on the shelf in store, only a few left";
+      case "out_of_stock":
+        return "sold out in store at the moment";
+      case "needs_attention":
+        return "stock not confirmed — a bookseller can check the shelf";
+    }
+  }
+  switch (status) {
+    case "in_stock":
+      return "in stock now — reserve it here and pay in person at pickup";
+    case "low_stock":
+      return "in stock but running low — reserve it here to hold a copy for pickup";
+    case "out_of_stock":
+      return "not on the shelf right now — it's a pre-order title, so a bookseller can order a copy in for you";
+    case "needs_attention":
+      return "not currently stocked — it's a pre-order title; ask a bookseller and they'll order a copy in";
+  }
+}
+
+/**
  * PostgREST `.or()` filter for the support chatbot's book search
  * (app/product-c/actions.ts). A customer asks "do you have anything by
  * <author>" as often as they ask for a title, so all three of ISBN,
