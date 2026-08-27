@@ -31,10 +31,15 @@ export function CardImage({
   const showPlaceholder = !src || failed;
 
   return (
-    <div className={`w-full flex-none overflow-hidden bg-ink/5 ${ASPECT_CLASS[aspect]}`}>
+    <div className={`w-full flex-none overflow-hidden ${ASPECT_CLASS[aspect]}`}>
       {showPlaceholder ? (
-        <div className="flex h-full w-full items-center justify-center px-2 text-center text-xs text-ink/40">
-          {emptyLabel}
+        // Branded typographic placeholder — a warm accent-tinted panel
+        // with the wordmark mark, not a bare "no image" grey box.
+        <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-accent-soft px-3 text-center">
+          <span aria-hidden className="font-serif text-2xl leading-none text-accent/70">
+            R
+          </span>
+          <span className="text-[10px] uppercase tracking-wide text-ink/45">{emptyLabel}</span>
         </div>
       ) : (
         // eslint-disable-next-line @next/next/no-img-element

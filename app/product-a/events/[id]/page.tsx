@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServerClient } from "@/lib/supabase-server";
 import { formatEventDate, formatEventTime } from "@/types/schema";
+import { CardImage } from "@/components/card-image";
 import { EventRsvp } from "./event-rsvp";
 
 export const dynamic = "force-dynamic";
@@ -22,14 +23,9 @@ export default async function EventDetailPage({ params }: { params: { id: string
         ← All events
       </Link>
 
-      {event.image_url && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={event.image_url}
-          alt=""
-          className="mt-6 aspect-[16/9] w-full rounded-lg object-cover shadow-md"
-        />
-      )}
+      <div className="mt-6 overflow-hidden rounded-lg shadow-md">
+        <CardImage src={event.image_url} alt="" aspect="video" emptyLabel="Riverside Books event" />
+      </div>
 
       <h1 className="mt-6 font-serif text-3xl text-ink sm:text-4xl">{event.event_title}</h1>
       {event.author_name && <p className="mt-2 text-lg text-ink/70">{event.author_name}</p>}
