@@ -29,19 +29,37 @@ customer-ID field, the stale-id-vs-session guard from the 2026-08-29 sweep fixes
 staff gates, mobile 375px with no overflow, dark mode. 94 tests pass, `tsc` + `eslint`
 + `next build` clean.
 
-### Still open from this pass
+### Follow-ups from this pass
 
-1. **No rate limiting on `/api/live/*`.** Same-origin is enforced now, so the
-   remaining exposure is a first-party page minting Gemini tokens or placing
-   pre-orders in a loop. A per-IP or per-customer limit is the real fix; an
-   in-memory bucket won't survive serverless, so this needs a shared store
-   (Supabase table or Upstash). **Effort:** M · **Priority:** P2
-2. **Cards are `<article role="button">` with a nested "Add to cart" button.**
-   Invalid ARIA (interactive inside an interactive role). No observed functional
-   impact — screen-reader semantics only. The fix is to make the cover/title a real
-   button and drop the role from the article. **Effort:** S · **Priority:** P4
-3. **Product B dashboard still unverified in a browser.** Standing gap — no staff
-   password in this environment.
+1. ~~**No rate limiting on `/api/live/*`.**~~ **Done (2026-08-29).** New
+   `lib/rate-limit.ts`: sliding window per caller (`x-forwarded-for` /
+   `x-real-ip`, falling back to one shared bucket so a missing address
+   throttles rather than exempts). Token route 10/min, execute-tool 20/min,
+   both answering 429 + `Retry-After`. Rejected hits aren't recorded, so
+   knocking can't extend your own lockout, and stale keys are swept.
+   Verified live: 14 token requests → 10× 200 then 429 with `retry-after: 50`;
+   24 execute-tool requests → 20 through, then 429. 10 unit tests.
+   **Left as-is:** counters live in process memory, which is right for how this
+   app runs (one Node process) but becomes limit × instances on a multi-instance
+   deploy. Swap in a shared counter (Supabase table with an atomic increment
+   RPC, or Upstash) if this is ever deployed that way. **Priority:** P4 until then.
+2. ~~**Cards are `<article role="button">` with a nested "Add to cart" button.**~~
+   **Done (2026-08-29).** Both `book-card.tsx` and `gift-card.tsx` are plain
+   `<article>` now (whole-card click kept as a mouse affordance), with the title
+   as a real button carrying `aria-label="View details for X"` — the accessible
+   name contains the visible title, so WCAG 2.5.3 holds. Verified: 0 articles
+   with `role="button"`, 56 real buttons, keyboard Enter on a title opens the
+   product drawer.
+3. **Product B dashboard still unverified in a browser.** Standing gap. The
+   roster (`staff_users`) has exactly one member and it's the owner's own
+   Supabase Auth account (`jeffreydelacruzbarrera@gmail.com`), so verifying the
+   dashboard needs either that password or a throwaway staff account
+   provisioned with the service-role key and removed afterwards. Everything on
+   the staff surface is type-checked, lint-clean and built, and the gates around
+   it are verified (unauthenticated → sign-in, customer session → storefront,
+   customer credentials at staff sign-in → rejected) — what's unverified is the
+   dashboard's own UI: the 5 tabs, the new set-stock / edit-price editor, and
+   the `<StaffGateNotice>` retry state. **Priority:** P2
 
 ---
 
