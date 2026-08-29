@@ -1,5 +1,50 @@
 # TODOS
 
+## /qa pass (2026-08-29): 5 issues, all 5 fixed, health 93 → 100
+
+**What:** full-app QA + adversarial stress pass against localhost:3000. Report:
+`.gstack/qa-reports/qa-report-localhost-3000-2026-08-29.md`.
+
+- **`/api/live/*` answered any caller (High)** — `curl -X POST` with no cookies and
+  `Origin: https://evil.example.com` minted Gemini Live tokens against the store's
+  paid `GOOGLE_API_KEY`, and drove `create_preorder` through the service-role client
+  for any known `cust_XXXXX`. Both routes still carried their scaffold
+  "TODO: add your own auth check" comment. Fixed with `lib/same-origin.ts` +
+  403s (`3fd02d9`), 6 regression tests.
+- **execute-tool leaked raw Postgres errors (Med)** — table and constraint names in
+  the 500 body; now mapped through `friendlyDbError` (`3e7235c`).
+- **Product C chatbot showed literal markdown (Med)** — "Yes, \*1984\* by George
+  Orwell is in stock". `stripMarkdownEmphasis` was wired into Product D only; now
+  applied to chat answers too (`7cc7803`).
+- **Unbounded order quantity (Low)** — a tampered cart carrying 99999999999
+  overflowed Postgres `integer` and reported a retry that could never succeed.
+  Capped at `MAX_ORDER_QUANTITY` 999 on both the cart and kiosk schemas (`fbefe2d`).
+- **Checkout hid which field was wrong (Low)** — a past pickup date got the generic
+  sentence instead of the schema's "Choose a pickup date today or later." (`a0bb463`).
+
+**Held up under stress:** tampered cart quantity vs stock (refused, "only 9 left"),
+20 concurrent pre-orders rolling back with no stock leak, double-submit protection,
+the 500-char chatbot cap (server-side, no Gemini call spent), XSS payload in the
+customer-ID field, the stale-id-vs-session guard from the 2026-08-29 sweep fixes, all
+staff gates, mobile 375px with no overflow, dark mode. 94 tests pass, `tsc` + `eslint`
++ `next build` clean.
+
+### Still open from this pass
+
+1. **No rate limiting on `/api/live/*`.** Same-origin is enforced now, so the
+   remaining exposure is a first-party page minting Gemini tokens or placing
+   pre-orders in a loop. A per-IP or per-customer limit is the real fix; an
+   in-memory bucket won't survive serverless, so this needs a shared store
+   (Supabase table or Upstash). **Effort:** M · **Priority:** P2
+2. **Cards are `<article role="button">` with a nested "Add to cart" button.**
+   Invalid ARIA (interactive inside an interactive role). No observed functional
+   impact — screen-reader semantics only. The fix is to make the cover/title a real
+   button and drop the role from the article. **Effort:** S · **Priority:** P4
+3. **Product B dashboard still unverified in a browser.** Standing gap — no staff
+   password in this environment.
+
+---
+
 ## Sweep follow-ups closed (2026-08-29): all 8 remaining low-severity items
 
 **What:** the eight `2026-08-27 sweep` entries that were still open (the P2
