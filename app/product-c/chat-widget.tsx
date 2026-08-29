@@ -126,11 +126,17 @@ export function ChatWidget() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Its own polite region, outside role="log" — the message rotates
-          every 4s during a 20-30s wait, and inside the log each rotation
-          was re-announced to screen readers as new log content. */}
-      <p aria-live="polite" className="mt-2 min-h-[1.25rem] text-sm text-ink/50">
+      {/* The rotating copy is decorative — it changes every 4s purely so
+          a 20-30s wait looks alive, and any live region it sat in
+          (role="log" before, its own polite region after) re-announced
+          every rotation. aria-hidden stops that; the sr-only region below
+          says it once when the wait starts, and the answer arriving in
+          role="log" announces the end. */}
+      <p aria-hidden="true" className="mt-2 min-h-[1.25rem] text-sm text-ink/50">
         {pending ? progressMessage : ""}
+      </p>
+      <p aria-live="polite" className="sr-only">
+        {pending ? "Checking the catalogue — this can take a few seconds." : ""}
       </p>
 
       <form onSubmit={handleSubmit} className="mt-4 flex gap-2">

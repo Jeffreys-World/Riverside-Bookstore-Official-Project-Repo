@@ -1,5 +1,6 @@
 import { getServerClient } from "@/lib/supabase-server";
 import { requireStaffPage } from "@/lib/staff-auth";
+import { StaffGateNotice } from "@/components/staff-gate-notice";
 import { ContentForm } from "./content-form";
 import { StaffNav } from "../product-b/staff-nav";
 
@@ -15,7 +16,8 @@ export default async function ProductDPage() {
   // Was only `if (!session)` — a signed-in Product A customer (one shared
   // auth cookie) sailed straight through to the store's paid Gemini key.
   // requireStaffPage() runs the same is_staff() gate as Product B.
-  await requireStaffPage();
+  const gate = await requireStaffPage();
+  if (!gate.ok) return <StaffGateNotice />;
 
   const supabase = getServerClient();
 

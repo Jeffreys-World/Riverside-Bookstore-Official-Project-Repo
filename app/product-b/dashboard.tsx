@@ -16,8 +16,11 @@ import {
   removeMerchandiseStockAction,
   deleteBookAction,
   deleteMerchandiseAction,
+  updateBookListingAction,
+  updateMerchandiseListingAction,
   type RemoveStockResult,
   type DeleteListingResult,
+  type UpdateListingResult,
 } from "./actions";
 import { StaffNav } from "./staff-nav";
 import { StampBadge, type StampTone } from "@/components/stamp-badge";
@@ -158,6 +161,108 @@ function StockRemoveControl({
         {pending ? "Removing…" : "Remove stock"}
       </button>
       {error && <p className="w-full text-[10px] text-claret">{error}</p>}
+    </div>
+  );
+}
+
+// Corrects a listing in place: SET the stock count (not just decrement,
+// which is all StockRemoveControl above can do) and fix the price. Both
+// are the same write under 0032's staff UPDATE policy, so they share one
+// collapsed editor rather than two more buttons on an already-dense
+// card. Opening it re-seeds the fields from the current row, so a
+// Realtime update between edits can't be saved back over with a stale
+// value.
+function ListingEditControl({
+  stockQuantity,
+  price,
+  onSave,
+}: {
+  stockQuantity: number | null;
+  price: number;
+  onSave: (values: { stock_quantity: number | null; price: number }) => Promise<UpdateListingResult>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [stock, setStock] = useState("");
+  const [priceText, setPriceText] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+
+  function toggle() {
+    if (!open) {
+      setStock(stockQuantity === null ? "" : String(stockQuantity));
+      setPriceText(price.toFixed(2));
+      setError("");
+    }
+    setOpen((v) => !v);
+  }
+
+  async function handleSave() {
+    const trimmedStock = stock.trim();
+    // Blank stays null — "not yet inventoried" is a real state, never 0.
+    const nextStock = trimmedStock === "" ? null : Number(trimmedStock);
+    if (nextStock !== null && (!Number.isInteger(nextStock) || nextStock < 0)) {
+      setError("Stock must be a whole number, 0 or more (or blank).");
+      return;
+    }
+    const nextPrice = Number(priceText.trim());
+    if (!Number.isFinite(nextPrice) || nextPrice < 0) {
+      setError("Price must be 0 or more.");
+      return;
+    }
+
+    setPending(true);
+    setError("");
+    const res = await onSave({ stock_quantity: nextStock, price: nextPrice });
+    setPending(false);
+    if (res.ok) setOpen(false);
+    else setError(res.message);
+  }
+
+  return (
+    <div className="mt-1">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="min-h-[36px] w-full rounded-md border border-ink/20 px-2 py-1 text-xs font-medium text-ink transition-transform duration-150 hover:scale-105"
+      >
+        {open ? "Cancel" : "Edit stock / price"}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2 rounded-md border border-ink/15 bg-field p-2">
+          <label className="block text-[10px] uppercase tracking-wide text-ink/50">
+            Stock (blank = not inventoried)
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={stock}
+              onChange={(e) => setStock(e.target.value)}
+              className="mt-1 block min-h-[36px] w-full rounded-md border border-ink/20 bg-surface px-2 py-1 text-sm normal-case tracking-normal text-ink"
+            />
+          </label>
+          <label className="block text-[10px] uppercase tracking-wide text-ink/50">
+            Price
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={priceText}
+              onChange={(e) => setPriceText(e.target.value)}
+              className="mt-1 block min-h-[36px] w-full rounded-md border border-ink/20 bg-surface px-2 py-1 text-sm normal-case tracking-normal text-ink"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={pending}
+            className="min-h-[36px] w-full rounded-md bg-accent px-2 py-1 text-xs font-medium text-paper transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+          >
+            {pending ? "Saving…" : "Save changes"}
+          </button>
+          {error && <p className="text-[10px] text-claret">{error}</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -527,6 +632,29 @@ export function Dashboard({
                         return res;
                       }}
                     />
+                    <ListingEditControl
+                      stockQuantity={f.stockQuantity}
+                      price={booksByIsbn[f.id]?.price ?? 0}
+                      onSave={async (values) => {
+                        const res = await updateBookListingAction(f.id, values);
+                        if (res.ok) {
+                          setBooksByIsbn((prev) => {
+                            const existing = prev[f.id];
+                            return existing
+                              ? {
+                                  ...prev,
+                                  [f.id]: {
+                                    ...existing,
+                                    stock_quantity: res.stockQuantity,
+                                    price: res.price,
+                                  },
+                                }
+                              : prev;
+                          });
+                        }
+                        return res;
+                      }}
+                    />
                     <DeleteListingControl
                       label={booksByIsbn[f.id]?.book_title ?? f.id}
                       onDelete={async () => {
@@ -586,6 +714,29 @@ export function Dashboard({
                             const existing = prev[f.id];
                             return existing
                               ? { ...prev, [f.id]: { ...existing, stock_quantity: res.stockQuantity } }
+                              : prev;
+                          });
+                        }
+                        return res;
+                      }}
+                    />
+                    <ListingEditControl
+                      stockQuantity={f.stockQuantity}
+                      price={merchandiseById[f.id]?.price ?? 0}
+                      onSave={async (values) => {
+                        const res = await updateMerchandiseListingAction(f.id, values);
+                        if (res.ok) {
+                          setMerchandiseById((prev) => {
+                            const existing = prev[f.id];
+                            return existing
+                              ? {
+                                  ...prev,
+                                  [f.id]: {
+                                    ...existing,
+                                    stock_quantity: res.stockQuantity,
+                                    price: res.price,
+                                  },
+                                }
                               : prev;
                           });
                         }

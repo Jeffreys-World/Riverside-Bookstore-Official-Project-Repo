@@ -39,6 +39,29 @@
     --color-scrim: 0 0 0; /* backdrop stays dark in both themes */
   }
 
+  /* Tailwind's shadow utilities are all rgb(0 0 0 / 0.1), tuned for a
+     light page — against the dark theme's near-black paper/surface they
+     contribute nothing, so cards and drawers lose their lift entirely
+     (nav-menu.tsx already worked around this by bumping its border).
+     Restating just the four the app uses, with a much stronger black,
+     keeps elevation readable in dark mode without touching any call
+     site. `.dark .x` outranks `.x`, and the hover variants have to be
+     named separately because their class is `hover:shadow-*`. */
+  .dark .shadow-sm,
+  .dark .hover\:shadow-sm:hover {
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.55);
+  }
+  .dark .shadow-md {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.6), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+  }
+  .dark .shadow-lg,
+  .dark .hover\:shadow-lg:hover {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.65), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+  }
+  .dark .shadow-xl {
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.7), 0 8px 10px -6px rgb(0 0 0 / 0.55);
+  }
+
   :focus-visible {
     outline: 2px solid theme("colors.accent.DEFAULT");
     outline-offset: 2px;

@@ -3,7 +3,11 @@
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase-server";
 import { fetchBookMetadata, searchBookCandidates, type BookSearchCandidate } from "@/lib/google-books";
-import { addBookRequestSchema, addMerchandiseRequestSchema } from "@/types/schema";
+import {
+  addBookRequestSchema,
+  addMerchandiseRequestSchema,
+  editListingSchema,
+} from "@/types/schema";
 import { friendlyDbError, isMappedDbError } from "@/lib/db-errors";
 import { assertStaff } from "@/lib/staff-auth";
 
@@ -213,6 +217,92 @@ export async function removeMerchandiseStockAction(id: string, amount: number): 
     };
   }
   return { ok: true, stockQuantity: data as number };
+}
+
+export type UpdateListingResult =
+  | { ok: true; stockQuantity: number | null; price: number }
+  | { ok: false; message: string };
+
+const LISTING_UPDATE_ERRORS = {
+  "22003": "That price is too large — check the amount.",
+};
+
+/**
+ * The other half of the stock-correction story: removeBookStockAction
+ * only ever decrements, so a count typed too LOW (or a genuine restock,
+ * or a wrong price) had no in-app fix at all for any title with order
+ * history — deleteBookAction fails on the orders.isbn FK. This SETS both
+ * columns instead, under 0032's staff UPDATE policy (no RPC, no new
+ * migration — the policy already permits exactly this write).
+ *
+ * Last-write-wins on purpose: a manual count is staff saying "this is
+ * what's on the shelf right now", which should overwrite, unlike a
+ * pre-order's decrement that must compose atomically with concurrent
+ * ones (create_preorder, 0011).
+ */
+export async function updateBookListingAction(
+  isbn: string,
+  input: unknown
+): Promise<UpdateListingResult> {
+  if (!(await assertStaff())) {
+    return { ok: false, message: "Staff access required." };
+  }
+  const parsed = editListingSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Check the values and try again." };
+  }
+
+  const supabase = getServerClient();
+  const { data, error } = await supabase
+    .from("books")
+    .update({ stock_quantity: parsed.data.stock_quantity, price: parsed.data.price })
+    .eq("isbn", isbn)
+    .select("stock_quantity, price")
+    .maybeSingle();
+
+  if (error) {
+    if (!isMappedDbError(error, LISTING_UPDATE_ERRORS)) {
+      console.error(`updateBookListingAction failed [${error.code ?? "?"}]: ${error.message}`);
+    }
+    return { ok: false, message: friendlyDbError(error, LISTING_UPDATE_ERRORS) };
+  }
+  if (!data) {
+    return { ok: false, message: "That title is no longer listed — refresh the dashboard." };
+  }
+  return { ok: true, stockQuantity: data.stock_quantity, price: data.price };
+}
+
+/** Merchandise twin of updateBookListingAction — same policy, same rules. */
+export async function updateMerchandiseListingAction(
+  id: string,
+  input: unknown
+): Promise<UpdateListingResult> {
+  if (!(await assertStaff())) {
+    return { ok: false, message: "Staff access required." };
+  }
+  const parsed = editListingSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Check the values and try again." };
+  }
+
+  const supabase = getServerClient();
+  const { data, error } = await supabase
+    .from("merchandise")
+    .update({ stock_quantity: parsed.data.stock_quantity, price: parsed.data.price })
+    .eq("id", id)
+    .select("stock_quantity, price")
+    .maybeSingle();
+
+  if (error) {
+    if (!isMappedDbError(error, LISTING_UPDATE_ERRORS)) {
+      console.error(`updateMerchandiseListingAction failed [${error.code ?? "?"}]: ${error.message}`);
+    }
+    return { ok: false, message: friendlyDbError(error, LISTING_UPDATE_ERRORS) };
+  }
+  if (!data) {
+    return { ok: false, message: "That item is no longer listed — refresh the dashboard." };
+  }
+  return { ok: true, stockQuantity: data.stock_quantity, price: data.price };
 }
 
 export type DeleteListingResult = { ok: true } | { ok: false; message: string };

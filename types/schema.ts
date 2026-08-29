@@ -337,6 +337,19 @@ export const addMerchandiseRequestSchema = z.object({
 });
 export type AddMerchandiseRequest = z.infer<typeof addMerchandiseRequestSchema>;
 
+// editListingSchema — Product B's inline "correct this listing" control
+// (dashboard.tsx). Unlike remove_book_stock (0032), which decrements,
+// this SETS stock_quantity, so staff can also restock a title or walk a
+// count back up after typing it too low; blank still means null ("not
+// yet inventoried"), never 0. Price is the same display-only
+// numeric(10,2) the add forms take. Both columns are writable under
+// 0032's staff UPDATE policy.
+export const editListingSchema = z.object({
+  stock_quantity: stockQuantitySchema,
+  price: priceSchema,
+});
+export type EditListingRequest = z.infer<typeof editListingSchema>;
+
 // ---------------------------------------------------------------------------
 // Display formatting helpers (UI layer only — never used for storage)
 // ---------------------------------------------------------------------------

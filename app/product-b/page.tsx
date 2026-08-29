@@ -1,5 +1,6 @@
 import { getServerClient } from "@/lib/supabase-server";
 import { requireStaffPage } from "@/lib/staff-auth";
+import { StaffGateNotice } from "@/components/staff-gate-notice";
 import { Dashboard } from "./dashboard";
 
 // Auth-gated and always reads live orders/stock — must never be
@@ -22,7 +23,8 @@ export default async function ProductBPage({
   // cookie) to the customer app. is_staff() (0018) is re-checked here on
   // every load, so a roster change takes effect without a forced
   // sign-out. Shared with Product D — see lib/staff-auth.ts.
-  await requireStaffPage();
+  const gate = await requireStaffPage();
+  if (!gate.ok) return <StaffGateNotice />;
 
   const supabase = getServerClient();
 

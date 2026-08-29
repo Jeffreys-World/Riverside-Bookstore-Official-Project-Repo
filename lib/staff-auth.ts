@@ -9,7 +9,9 @@
  *    non-staff visitor (e.g. a Product A customer — one shared auth
  *    cookie) to the customer app. is_staff() (0018_staff_rbac.sql) is
  *    re-checked on every load, so a roster change takes effect
- *    immediately without forcing a sign-out.
+ *    immediately without forcing a sign-out. Returns a gate result
+ *    instead of redirecting for the one inconclusive case — the RPC
+ *    itself failing — which the caller renders as a retry in place.
  *
  *  - `assertStaff()` — for Server Actions that don't touch an
  *    RLS-protected table (so there's no policy to fall back on). Returns
@@ -19,7 +21,13 @@
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase-server";
 
-export async function requireStaffPage(): Promise<void> {
+/**
+ * `{ ok: false }` means "couldn't tell", never "not staff" — a staff
+ * member stays signed in and the page shows <StaffGateNotice>.
+ */
+export type StaffGate = { ok: true } | { ok: false };
+
+export async function requireStaffPage(): Promise<StaffGate> {
   const supabase = getServerClient();
   const {
     data: { session },
@@ -40,17 +48,16 @@ export async function requireStaffPage(): Promise<void> {
     // A transient RPC failure (PostgREST 5xx, network blip, token-refresh
     // race) must not be conflated with "not staff" and bounce a real
     // staff member to the customer storefront — that reads as a revoked
-    // account. Fail closed, but to sign-in with a retry message.
+    // account. It shouldn't throw them back to sign-in either: the
+    // session is fine, the check isn't. Fail closed by showing no staff
+    // data, but keep them on the page with a retry.
     console.error(`is_staff() check failed: ${error.message}`);
-    redirect(
-      `/product-b/sign-in?error=${encodeURIComponent(
-        "We couldn't verify your staff access just now — please sign in again."
-      )}`
-    );
+    return { ok: false };
   }
   if (!isStaff) {
     redirect("/product-a");
   }
+  return { ok: true };
 }
 
 export async function assertStaff(): Promise<boolean> {

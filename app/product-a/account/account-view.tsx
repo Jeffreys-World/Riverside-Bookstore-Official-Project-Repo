@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+// useFormState, not React 19's useActionState — this app is on React
+// 18.3 with Next 14, where the hook still lives in react-dom.
+import { useFormState } from "react-dom";
+import { useRouter } from "next/navigation";
 import { clearCustomerId, loadCustomerId, saveCustomerId } from "@/lib/customer-id-storage";
 import {
   ORDER_STATUS_LABEL,
@@ -15,12 +19,13 @@ import { SubmitButton } from "@/components/submit-button";
 import { ClaimIdField } from "@/components/claim-id-field";
 import {
   getAccountAction,
-  customerSignInAction,
+  customerSignInInlineAction,
   customerSignOutAction,
-  customerSignUpAction,
+  customerSignUpInlineAction,
   redeemBlindDateAction,
   donatePointsAction,
   type AccountOrder,
+  type AuthFormState,
 } from "../actions";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
@@ -89,6 +94,18 @@ export function AccountView({
   >(null);
   const [activeTab, setActiveTab] = useState<AccountTabKey>("points");
   const [authTab, setAuthTab] = useState<AuthTabKey>("signin");
+  const router = useRouter();
+  // The embedded tabs post to the *Inline* auth actions, which return an
+  // error instead of redirecting to /product-a/login|signup — a typo here
+  // shouldn't move the visitor off the account page they opened.
+  const [signInState, signInFormAction] = useFormState<AuthFormState, FormData>(
+    customerSignInInlineAction,
+    {}
+  );
+  const [signUpState, signUpFormAction] = useFormState<AuthFormState, FormData>(
+    customerSignUpInlineAction,
+    {}
+  );
 
   // Resolve the account: server prefers the session, falls back to a
   // client-passed cust_XXXXX. `passedId` is only meaningful when signed
@@ -126,6 +143,23 @@ export function AccountView({
   useEffect(() => {
     resolveAccount(loadCustomerId() || undefined);
   }, [resolveAccount]);
+
+  // An embedded sign-in/sign-up succeeded. The inline actions hand back a
+  // destination instead of redirecting themselves (see AuthFormState) —
+  // when it's this page, re-resolve in place so the visitor stays on the
+  // tab they used; router.refresh() re-runs the server component so its
+  // initialSignedIn matches the new cookie.
+  const redirectTo = signInState.redirectTo ?? signUpState.redirectTo;
+  useEffect(() => {
+    if (!redirectTo) return;
+    if (redirectTo.startsWith("/product-a/account")) {
+      setPhase("loading");
+      resolveAccount(undefined);
+      router.refresh();
+    } else {
+      router.push(redirectTo);
+    }
+  }, [redirectTo, resolveAccount, router]);
 
   // Poll while an account is open so a purchase elsewhere (another tab,
   // the voice kiosk) shows up without a manual refresh.
@@ -215,11 +249,19 @@ export function AccountView({
 
           {authTab === "signin" ? (
             <form
-              action={customerSignInAction}
+              action={signInFormAction}
               role="tabpanel"
               aria-label="Sign in"
               className="mt-6 space-y-4"
             >
+              {signInState.error && (
+                <p
+                  role="alert"
+                  className="rounded-md border border-claret/30 bg-claret-soft p-3 text-sm text-claret"
+                >
+                  {signInState.error}
+                </p>
+              )}
               <div>
                 <label htmlFor="signin_email" className="block text-sm font-medium text-ink">
                   Email
@@ -255,11 +297,24 @@ export function AccountView({
             </form>
           ) : (
             <form
-              action={customerSignUpAction}
+              action={signUpFormAction}
               role="tabpanel"
               aria-label="Create account"
               className="mt-6 space-y-4"
             >
+              {signUpState.error && (
+                <p
+                  role="alert"
+                  className="rounded-md border border-claret/30 bg-claret-soft p-3 text-sm text-claret"
+                >
+                  {signUpState.error}
+                </p>
+              )}
+              {signUpState.notice && (
+                <p role="status" className="rounded-md bg-accent-soft p-3 text-sm text-ink">
+                  {signUpState.notice}
+                </p>
+              )}
               <ClaimIdField />
               <div>
                 <label htmlFor="signup_email" className="block text-sm font-medium text-ink">

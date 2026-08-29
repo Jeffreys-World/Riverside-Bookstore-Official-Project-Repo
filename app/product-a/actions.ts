@@ -11,9 +11,18 @@
 
 import { redirect } from "next/navigation";
 import { getServerClient, getServiceRoleClient } from "@/lib/supabase-server";
-import { CUSTOMER_ID_REGEX, checkoutRequestSchema, customerCredentialsSchema } from "@/types/schema";
-import { authErrorMessage, validatePassedId } from "@/lib/customer-auth";
-import { resolveCustomer, resolveCustomerId } from "@/lib/customer-session";
+import { checkoutRequestSchema, customerCredentialsSchema } from "@/types/schema";
+import {
+  EMAIL_ALREADY_REGISTERED,
+  authErrorMessage,
+  isExistingUserSignUp,
+  validatePassedId,
+} from "@/lib/customer-auth";
+import {
+  resolveCustomer,
+  resolveCustomerId,
+  resolveMutationCustomerId,
+} from "@/lib/customer-session";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Only allow same-site redirects back into Product A after sign-in /
@@ -95,7 +104,13 @@ export async function checkoutAction(input: unknown): Promise<CheckoutResult> {
   if (!parsed.success) {
     return { ok: false, message: "Please check your cart, customer ID, and pickup time, then try again." };
   }
-  const { customer_id, items, pickup_date, pickup_window } = parsed.data;
+  const { customer_id: passedId, items, pickup_date, pickup_window } = parsed.data;
+
+  // A session, when there is one, decides whose account this reserves
+  // against — the id the browser sent is only trusted signed out.
+  const identity = await resolveMutationCustomerId(passedId);
+  if (!identity.ok) return { ok: false, message: identity.message };
+  const customer_id = identity.customerId;
 
   const supabase = getServiceRoleClient();
   const lines: CheckoutLineResult[] = [];
@@ -147,8 +162,9 @@ export async function checkoutAction(input: unknown): Promise<CheckoutResult> {
 // (app/product-b/actions.ts), minus the staff_users gate. These run
 // through the normal server client so the session cookie is written from
 // a real Server Action (getServerClient's set() only works here, not from
-// a Server Component). All four redirect rather than return — matching
-// signInAction on the staff side.
+// a Server Component). The page-level actions redirect rather than
+// return — matching signInAction on the staff side — while the inline
+// variants below return state for useActionState.
 // ---------------------------------------------------------------------------
 
 /**
@@ -161,18 +177,115 @@ export async function getMyCustomerIdAction(): Promise<string | null> {
   return resolveCustomerId();
 }
 
-export async function customerSignInAction(formData: FormData) {
+/**
+ * Both auth flows are written as a `*Core` that returns where it wants to
+ * go, then wrapped twice: the redirecting action the dedicated /login and
+ * /signup pages post to, and an `*InlineAction` (useActionState) the
+ * account page's embedded tabs use — so a mistyped password there shows
+ * an error in place instead of bouncing the visitor to another page.
+ */
+type AuthCoreResult =
+  | { kind: "done"; redirectTo: string }
+  | { kind: "error"; message: string };
+
+type SignUpCoreResult = AuthCoreResult | { kind: "pending"; email: string };
+
+/**
+ * useFormState shape for the account page's embedded auth forms. Success
+ * comes back as `redirectTo` for the client to navigate rather than a
+ * redirect() from inside the action: React throws "cannot update a
+ * component while rendering a different component" and blanks the page
+ * when a useFormState action redirects (Next 14 + React 18.3), and here
+ * the destination is usually the account page the visitor is already on,
+ * which just needs re-resolving.
+ */
+export interface AuthFormState {
+  error?: string;
+  notice?: string;
+  redirectTo?: string;
+}
+
+function nextQueryString(formData: FormData): string {
+  const next = sanitizeNext(String(formData.get("next") ?? ""));
+  return next ? `&next=${encodeURIComponent(next)}` : "";
+}
+
+async function signInCore(formData: FormData): Promise<AuthCoreResult> {
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
   const next = sanitizeNext(String(formData.get("next") ?? ""));
-  const nextQS = next ? `&next=${encodeURIComponent(next)}` : "";
 
   const supabase = getServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    redirect(`/product-a/login?error=${encodeURIComponent(authErrorMessage(error))}${nextQS}`);
+  if (error) return { kind: "error", message: authErrorMessage(error) };
+  return { kind: "done", redirectTo: next || "/product-a/account" };
+}
+
+/**
+ * supabase.auth.signUp mints the auth user; resolveCustomerId then links a
+ * customers row — adopting an unclaimed localStorage cust_XXXXX (claim_id,
+ * mirrored into a hidden field by the signup page) so a returning customer
+ * keeps their points + order history. If the project has "Confirm email"
+ * on, signUp returns no session and this reports `pending` rather than a
+ * broken-looking account page.
+ */
+async function signUpCore(formData: FormData): Promise<SignUpCoreResult> {
+  const email = String(formData.get("email") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const next = sanitizeNext(String(formData.get("next") ?? ""));
+  const claimId = validatePassedId(String(formData.get("claim_id") ?? ""));
+
+  const parsed = customerCredentialsSchema.safeParse({ email, password });
+  if (!parsed.success) {
+    return {
+      kind: "error",
+      message: parsed.error.issues[0]?.message ?? "Check your email and password.",
+    };
   }
-  redirect(next || "/product-a/account");
+
+  const supabase = getServerClient();
+  const { data, error } = await supabase.auth.signUp({
+    email: parsed.data.email,
+    password: parsed.data.password,
+  });
+  if (error) return { kind: "error", message: authErrorMessage(error) };
+
+  if (!data.session) {
+    // With "Confirm email" ON, GoTrue answers a duplicate sign-up with a
+    // session-less, obfuscated user and no error — which would tell an
+    // existing customer to open a confirmation link that never arrives.
+    // Send them to sign in instead.
+    if (isExistingUserSignUp(data)) return { kind: "error", message: EMAIL_ALREADY_REGISTERED };
+    return { kind: "pending", email: parsed.data.email };
+  }
+
+  const customerId = await resolveCustomerId({ claimId });
+  const claimed = Boolean(claimId) && customerId === claimId;
+
+  // The "welcome back, we linked your account" banner only makes sense on
+  // the account page; a ?next= redirect (mid-checkout) skips it.
+  if (!next && claimed) return { kind: "done", redirectTo: "/product-a/account?welcome=claimed" };
+  return { kind: "done", redirectTo: next || "/product-a/account" };
+}
+
+export async function customerSignInAction(formData: FormData) {
+  const result = await signInCore(formData);
+  if (result.kind === "error") {
+    redirect(
+      `/product-a/login?error=${encodeURIComponent(result.message)}${nextQueryString(formData)}`
+    );
+  }
+  redirect(result.redirectTo);
+}
+
+/** Sign in without leaving the page — the account screen's "Sign in" tab. */
+export async function customerSignInInlineAction(
+  _prev: AuthFormState,
+  formData: FormData
+): Promise<AuthFormState> {
+  const result = await signInCore(formData);
+  if (result.kind === "error") return { error: result.message };
+  return { redirectTo: result.redirectTo };
 }
 
 export async function customerSignOutAction() {
@@ -181,49 +294,32 @@ export async function customerSignOutAction() {
   redirect("/product-a");
 }
 
-/**
- * Real sign-up. supabase.auth.signUp mints the auth user; resolveCustomerId
- * then links a customers row — adopting an unclaimed localStorage
- * cust_XXXXX (claim_id, mirrored into a hidden field by the signup page)
- * so a returning customer keeps their points + order history. If the
- * project has "Confirm email" on, signUp returns no session and we send
- * the visitor to the pending state instead of a broken-looking account
- * page.
- */
 export async function customerSignUpAction(formData: FormData) {
-  const email = String(formData.get("email") ?? "");
-  const password = String(formData.get("password") ?? "");
-  const next = sanitizeNext(String(formData.get("next") ?? ""));
-  const claimId = validatePassedId(String(formData.get("claim_id") ?? ""));
-  const nextQS = next ? `&next=${encodeURIComponent(next)}` : "";
-
-  const parsed = customerCredentialsSchema.safeParse({ email, password });
-  if (!parsed.success) {
-    const message = parsed.error.issues[0]?.message ?? "Check your email and password.";
-    redirect(`/product-a/signup?error=${encodeURIComponent(message)}${nextQS}`);
+  const result = await signUpCore(formData);
+  if (result.kind === "error") {
+    redirect(
+      `/product-a/signup?error=${encodeURIComponent(result.message)}${nextQueryString(formData)}`
+    );
   }
-
-  const supabase = getServerClient();
-  const { data, error } = await supabase.auth.signUp({
-    email: parsed.data.email,
-    password: parsed.data.password,
-  });
-  if (error) {
-    redirect(`/product-a/signup?error=${encodeURIComponent(authErrorMessage(error))}${nextQS}`);
+  if (result.kind === "pending") {
+    redirect(`/product-a/signup?pending=1&email=${encodeURIComponent(result.email)}`);
   }
-  if (!data.session) {
-    redirect(`/product-a/signup?pending=1&email=${encodeURIComponent(parsed.data.email)}`);
-  }
+  redirect(result.redirectTo);
+}
 
-  const customerId = await resolveCustomerId({ claimId });
-  const claimed = Boolean(claimId) && customerId === claimId;
-
-  // The "welcome back, we linked your account" banner only makes sense on
-  // the account page; a ?next= redirect (mid-checkout) skips it.
-  if (!next && claimed) {
-    redirect("/product-a/account?welcome=claimed");
+/** Create an account without leaving the page — the account screen's "Create account" tab. */
+export async function customerSignUpInlineAction(
+  _prev: AuthFormState,
+  formData: FormData
+): Promise<AuthFormState> {
+  const result = await signUpCore(formData);
+  if (result.kind === "error") return { error: result.message };
+  if (result.kind === "pending") {
+    return {
+      notice: `Almost there — open the confirmation link we sent to ${result.email}, then sign in.`,
+    };
   }
-  redirect(next || "/product-a/account");
+  return { redirectTo: result.redirectTo };
 }
 
 export type RedeemBlindDateResult =
@@ -235,14 +331,14 @@ export type RedeemBlindDateResult =
  * (types/schema.ts) on a random in-stock title via redeem_blind_date()
  * (0030_loyalty_program_expansion.sql), which mints a real preorder. Same
  * server-only mutation pattern as checkoutAction: the RPC isn't granted
- * to anon, so this must run through the service-role client. The
- * customerId here comes from account-view's activeIdRef, which is the
- * session-resolved id when signed in.
+ * to anon, so this must run through the service-role client. Whose
+ * points get spent is decided by resolveMutationCustomerId, not by the
+ * id account-view passes in — a session always outranks it.
  */
-export async function redeemBlindDateAction(customerId: string): Promise<RedeemBlindDateResult> {
-  if (!CUSTOMER_ID_REGEX.test(customerId)) {
-    return { ok: false, message: "Enter a valid customer ID (cust_XXXXX)." };
-  }
+export async function redeemBlindDateAction(passedId: string): Promise<RedeemBlindDateResult> {
+  const identity = await resolveMutationCustomerId(passedId);
+  if (!identity.ok) return { ok: false, message: identity.message };
+  const customerId = identity.customerId;
 
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase
@@ -268,13 +364,13 @@ export type DonatePointsResult = { ok: true; pointsDonated: number } | { ok: fal
 /**
  * Symbolic-only "donate my points" gesture (0030_loyalty_program_expansion.sql's
  * donate_points()) — donates the entire current balance in one action, no
- * partial-amount input. Same service-role pattern as the other
- * points-spending action above.
+ * partial-amount input. Same service-role pattern, and the same
+ * session-first identity check, as the points-spending action above.
  */
-export async function donatePointsAction(customerId: string): Promise<DonatePointsResult> {
-  if (!CUSTOMER_ID_REGEX.test(customerId)) {
-    return { ok: false, message: "Enter a valid customer ID (cust_XXXXX)." };
-  }
+export async function donatePointsAction(passedId: string): Promise<DonatePointsResult> {
+  const identity = await resolveMutationCustomerId(passedId);
+  if (!identity.ok) return { ok: false, message: identity.message };
+  const customerId = identity.customerId;
 
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase.rpc("donate_points", { p_customer_id: customerId });

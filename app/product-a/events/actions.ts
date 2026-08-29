@@ -8,6 +8,7 @@
  */
 
 import { getServerClient, getServiceRoleClient } from "@/lib/supabase-server";
+import { resolveMutationCustomerId } from "@/lib/customer-session";
 import { rsvpRequestSchema } from "@/types/schema";
 
 export type RsvpResult =
@@ -20,9 +21,14 @@ export async function rsvpToEventAction(input: unknown): Promise<RsvpResult> {
     return { ok: false, message: "Enter a valid customer ID (cust_XXXXX) to RSVP." };
   }
 
+  // A signed-in visitor's session decides whose ticket this is; the id
+  // the browser sent is only trusted when there is no session.
+  const identity = await resolveMutationCustomerId(parsed.data.customer_id);
+  if (!identity.ok) return { ok: false, message: identity.message };
+
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase.rpc("create_event_ticket", {
-    p_customer_id: parsed.data.customer_id,
+    p_customer_id: identity.customerId,
     p_event_id: parsed.data.event_id,
   });
 

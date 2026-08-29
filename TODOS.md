@@ -1,5 +1,30 @@
 # TODOS
 
+## Sweep follow-ups closed (2026-08-29): all 8 remaining low-severity items
+
+**What:** the eight `2026-08-27 sweep` entries that were still open (the P2
+client-`customer_id` trust issue plus seven P3/P4s) are all fixed in `main`. Each
+entry below carries its own `**Status: Done (2026-08-29)**` line with what
+shipped. 80 unit tests pass (14 new), `tsc` + `eslint` + `next build` clean, and
+Product A's account / signup / checkout / RSVP flows were re-checked in a real
+browser signed out and signed in as `cust_demo01`.
+
+**Found and fixed along the way:** the account page's new inline auth forms first
+used `redirect()` from inside a `useFormState` action, which throws React's
+"cannot update a component while rendering a different component" and blanks the
+page. The inline actions now return `redirectTo` and the client navigates (see
+`AuthFormState` in `app/product-a/actions.ts`). Also: `useActionState` is React
+19 — this repo is React 18.3 / Next 14, so the hook is `useFormState` from
+`react-dom`.
+
+**Not verified in-browser:** the Product B dashboard changes (set-stock /
+edit-price editor, staff-gate retry state). Same standing gap as every prior
+session — no staff account password is available here, so `/product-b` can only
+be reached as far as its sign-in screen. Type-checked, lint-clean and built, but
+someone with the staff password should click through the two new controls.
+
+---
+
 ## Full-app bug sweep (2026-08-27): 49 confirmed findings, most fixed
 
 **What:** background audit + verify workflow over every area `/qa` didn't
@@ -48,10 +73,11 @@ findings; fixed the 3 High, all Medium, and most Low in `main`
 Apply each in the Supabase dashboard SQL editor, then from the repo root:
 `npx supabase migration repair --status applied 0037` (and `0038`).
 
-### Still open (low severity)
+### Low-severity follow-ups — all closed 2026-08-29
 
 Broken out as individual entries immediately below this one (all tagged
-`2026-08-27 sweep`), newest-first:
+`2026-08-27 sweep`), newest-first. Every one now carries a
+`**Status: Done (2026-08-29)**` line; see the section at the top of this file:
 
 1. Mutating Product A actions trust a client `customer_id`
 2. Duplicate-email sign-up dead-ends on "check your email"
@@ -91,6 +117,19 @@ pattern via `resolveCustomer()`.
 while signed in and signed out.
 **Priority:** P2
 
+**Status: Done (2026-08-29).** New `resolveMutationCustomerId()`
+(`lib/customer-session.ts`) wraps a pure `decideMutationCustomerId()`
+(`lib/customer-auth.ts`, 5 new tests): a Supabase Auth session always wins, a
+passed id that disagrees with it is refused ("signed in as a different account —
+refresh"), a staff session is refused outright, and the signed-out pre-auth
+fallback is unchanged. Wired into all four call sites — `checkoutAction`,
+`redeemBlindDateAction`, `donatePointsAction`, `rsvpToEventAction`. The
+voice-kiosk route (`app/api/live/execute-tool/route.ts`) deliberately still
+calls `create_preorder` directly; it has no browser session to resolve.
+Browser-checked: signed-out checkout with an unknown id still reports "we
+couldn't find that customer ID", and a signed-in RSVP booked `tkt_a182926127`
+against the session's `cust_demo01`.
+
 ---
 
 ## [2026-08-27 sweep] Duplicate-email sign-up dead-ends on the "check your email" screen
@@ -115,6 +154,14 @@ an empty `identities` array, or `user.email_confirmed_at` already set) and redir
 **Effort:** S
 **Priority:** P3
 
+**Status: Done (2026-08-29).** `isExistingUserSignUp()` (`lib/customer-auth.ts`,
+4 new tests) detects GoTrue's obfuscated duplicate — no error, no session, empty
+`identities` (or an already-confirmed email) — and `signUpCore` returns the
+`EMAIL_ALREADY_REGISTERED` copy instead of `?pending=1`. That sentence is now a
+single exported constant shared with `authErrorMessage()`, so the two can't
+drift. Only reachable with "Confirm email" ON, which this project doesn't use,
+so it stayed unverified in-browser.
+
 ---
 
 ## [2026-08-27 sweep] Account-page auth tabs navigate the user off the page on any error
@@ -136,6 +183,18 @@ with `signup/page.tsx`.
 
 **Effort:** S
 **Priority:** P3
+
+**Status: Done (2026-08-29).** Both auth flows were split into a `*Core` that
+returns where it wants to go, wrapped twice: the redirecting action the
+dedicated `/login` and `/signup` pages still post to, and a new
+`customerSignInInlineAction` / `customerSignUpInlineAction` that the account
+page's embedded tabs use through `useFormState`. Errors and the
+"check your email" notice now render inside the tab. The `next` hidden field was
+deliberately left off — the account page has no `?next=`, and the inline
+success path already resolves to the account page the visitor is on.
+Browser-checked: a wrong password on the embedded form keeps the visitor on
+`/product-a/account` with an inline alert, and a correct one signs them in
+without leaving the page.
 
 ---
 
@@ -160,6 +219,14 @@ checked; or only auto-adopt ids this browser actually created in this app.
 
 **Effort:** S–M
 **Priority:** P3
+
+**Status: Done (2026-08-29).** `components/claim-id-field.tsx` no longer mirrors
+the stored id into a hidden field. It renders the detected id with an unticked
+opt-in checkbox ("Link my existing customer ID cust_… — its reward points and
+order history come with you") plus a "leave this unticked on a shared or
+in-store computer" note, and only emits `claim_id` when ticked. Browser-checked
+on `/product-a/signup` with `cust_demo01` in localStorage: 0 hidden inputs
+before ticking, the id after.
 
 ---
 
@@ -186,6 +253,20 @@ non-null RPC error render an inline retry state rather than redirecting.
 **Effort:** M
 **Priority:** P3
 
+**Status: Done (2026-08-29), not browser-verified.** (1) New
+`ListingEditControl` on the Stock Levels / Merchandise Stock cards — a collapsed
+editor that SETS stock (blank still means null, "not yet inventoried") and the
+price, backed by `updateBookListingAction` /
+`updateMerchandiseListingAction` and `editListingSchema`. Plain `.update()`
+under 0032's existing staff UPDATE policy, so no new migration to apply. Opening
+the editor re-seeds from the current row so a Realtime update can't be saved
+back over. (2) `requireStaffPage()` now returns a `StaffGate` and, on a genuine
+`is_staff()` RPC error, returns `{ ok: false }` instead of redirecting; Product
+B and Product D render the new `<StaffGateNotice>` (retry via `router.refresh()`,
+or sign in again) and keep the session. Unauthenticated → sign-in and
+non-staff → storefront redirects are unchanged. No staff password available
+here, so neither is clicked through in a browser yet.
+
 ---
 
 ## [2026-08-27 sweep] Product C: pending indicator re-announces; FAQ accordion isn't a real tablist
@@ -208,6 +289,13 @@ functional impact.
 **Effort:** S
 **Priority:** P4
 
+**Status: Done (2026-08-29).** The rotating "Checking… / Looking that up…" line
+in `app/product-c/chat-widget.tsx` is now `aria-hidden` (it's decorative — it
+exists so a 20-30s wait looks alive), with a single `sr-only`
+`aria-live="polite"` region that announces the wait once; the answer landing in
+`role="log"` announces the end. Item 2 needed no change — the FAQ `<details>`
+grid is intentionally not ARIA-tabbed.
+
 ---
 
 ## [2026-08-27 sweep] Dark mode: box-shadow invisible on near-black surfaces
@@ -229,6 +317,11 @@ container borders the way the dropdowns were bumped.
 **Effort:** S
 **Priority:** P4
 
+**Status: Done (2026-08-29).** `app/globals.css` restates the four shadow
+utilities the app actually uses (`shadow-sm/md/lg/xl`, plus the `hover:` forms)
+under `.dark` with a much stronger black. Browser-checked: `.shadow-lg` computes
+`rgba(0,0,0,0.1)` in light and `rgba(0,0,0,0.65)` in dark. No call site changed.
+
 ---
 
 ## [2026-08-27 sweep] `stripMarkdownEmphasis` `*` rule is still greedy
@@ -248,6 +341,12 @@ behavior.
 
 **Effort:** S
 **Priority:** P4
+
+**Status: Done (2026-08-29).** The `*` and `**` rules now carry the same
+word-boundary + non-space constraints the `_` rule got, so a `* bullet` list,
+`2 * 3 * 4`, a `free tote * one per customer *` footnote and an intraword
+asterisk all survive. 5 new cases in `lib/markdown.test.ts` alongside the
+existing ones, which still pass unchanged.
 
 ---
 

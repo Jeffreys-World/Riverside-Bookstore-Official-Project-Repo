@@ -17,7 +17,11 @@
  */
 
 import { getServerClient } from "@/lib/supabase-server";
-import { validatePassedId } from "@/lib/customer-auth";
+import {
+  decideMutationCustomerId,
+  validatePassedId,
+  type MutationIdDecision,
+} from "@/lib/customer-auth";
 
 export interface ResolvedCustomer {
   customerId: string;
@@ -69,4 +73,49 @@ export async function resolveCustomer(opts?: ResolveOpts): Promise<ResolvedCusto
 /** Thin wrapper for callers that only need the id (checkout sync, sign-up claim). */
 export async function resolveCustomerId(opts?: ResolveOpts): Promise<string | null> {
   return (await resolveCustomer(opts))?.customerId ?? null;
+}
+
+/**
+ * The identity check the *mutating* Product A actions use (checkout,
+ * RSVP, blind date, donate). Unlike resolveCustomer() — which is happy to
+ * take a well-formed cust_XXXXX on its own for reads — this makes an
+ * existing Supabase Auth session authoritative: the session's customer
+ * wins, and a client-passed id that disagrees is refused. The signed-out
+ * pre-auth flow still works, and the voice-kiosk server route
+ * (app/api/live/execute-tool/route.ts) deliberately doesn't come through
+ * here — it has no browser session to resolve.
+ */
+export async function resolveMutationCustomerId(
+  passedId?: string | null
+): Promise<MutationIdDecision> {
+  const supabase = getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return decideMutationCustomerId(null, passedId);
+
+  const { data, error } = await supabase.rpc("get_or_create_my_customer", { p_claim: null });
+  if (error) {
+    // One string arg only — multi-arg console.error crashes this
+    // machine's VSCode extension in Server Actions.
+    console.error(`resolveMutationCustomerId: get_or_create_my_customer failed: ${error.message}`);
+    return {
+      ok: false,
+      message: "We couldn't verify your account just now. Refresh the page and try again.",
+    };
+  }
+
+  const sessionCustomerId = (data as string | null) ?? null;
+  if (!sessionCustomerId) {
+    // The RPC refuses to mint a customers row for a staff session — don't
+    // fall back to the passed id, or a signed-in bookseller's browser
+    // would still spend a customer's points.
+    return {
+      ok: false,
+      message: "You're signed in as staff. Sign out to use a customer account.",
+    };
+  }
+
+  return decideMutationCustomerId(sessionCustomerId, passedId);
 }

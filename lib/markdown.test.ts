@@ -54,3 +54,32 @@ describe("stripMarkdownEmphasis", () => {
     );
   });
 });
+
+// Regression: the `*` rules were still unbounded (/\*(.+?)\*/) after the
+// underscore rule was word-bounded — any two literal asterisks on one line
+// got eaten. Found by the 2026-08-27 full-app audit (finding 15).
+describe("stripMarkdownEmphasis — literal asterisks", () => {
+  it("leaves an asterisk-bulleted list alone", () => {
+    const list = "* Cozy mysteries\n* New arrivals\n* Staff picks";
+    expect(stripMarkdownEmphasis(list)).toBe(list);
+  });
+
+  it("leaves a footnote-style asterisk pair alone", () => {
+    const caption = "Free tote with any purchase * one per customer, while stocks last *";
+    expect(stripMarkdownEmphasis(caption)).toBe(caption);
+  });
+
+  it("leaves spaced asterisks alone", () => {
+    expect(stripMarkdownEmphasis("2 * 3 * 4")).toBe("2 * 3 * 4");
+  });
+
+  it("leaves an asterisk glued to a word alone", () => {
+    expect(stripMarkdownEmphasis("cost*less deals*here")).toBe("cost*less deals*here");
+  });
+
+  it("still strips emphasis next to punctuation", () => {
+    expect(stripMarkdownEmphasis("Read *Sapiens*, then **Klara and the Sun**.")).toBe(
+      "Read Sapiens, then Klara and the Sun."
+    );
+  });
+});
