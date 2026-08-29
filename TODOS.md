@@ -50,16 +50,35 @@ staff gates, mobile 375px with no overflow, dark mode. 94 tests pass, `tsc` + `e
    name contains the visible title, so WCAG 2.5.3 holds. Verified: 0 articles
    with `role="button"`, 56 real buttons, keyboard Enter on a title opens the
    product drawer.
-3. **Product B dashboard still unverified in a browser.** Standing gap. The
-   roster (`staff_users`) has exactly one member and it's the owner's own
-   Supabase Auth account (`jeffreydelacruzbarrera@gmail.com`), so verifying the
-   dashboard needs either that password or a throwaway staff account
-   provisioned with the service-role key and removed afterwards. Everything on
-   the staff surface is type-checked, lint-clean and built, and the gates around
-   it are verified (unauthenticated → sign-in, customer session → storefront,
-   customer credentials at staff sign-in → rejected) — what's unverified is the
-   dashboard's own UI: the 5 tabs, the new set-stock / edit-price editor, and
-   the `<StaffGateNotice>` retry state. **Priority:** P2
+3. ~~**Product B dashboard still unverified in a browser.**~~ **Done
+   (2026-08-29)** — the gap that stood open since the 2026-08-26 sessions is
+   closed. Verified with a throwaway staff account (`staff.qa.temp@riverside.test`,
+   provisioned with the service-role key, added to `staff_users`, deleted along
+   with its roster row afterwards; the owner's own account was never touched and
+   the roster is back to exactly one member):
+
+   - **All 5 tabs render.** Pending Pre-Orders, Stock Levels (severity-sorted:
+     out of stock → not inventoried → low → in stock), Merchandise Stock, and
+     both add forms with every field present.
+   - **The new set-stock / edit-price editor works end to end.** Sapiens
+     2 @ $22.00 → 7 @ $23.50, badge flipped LOW STOCK → IN STOCK, persisted
+     across a reload, then restored to 2 @ $22.00. That exercises 0032's staff
+     UPDATE policy through a real staff session — the first time that path has
+     been run in a browser.
+   - **Editor validation holds.** Stock -5 and 2.5 → "Stock must be a whole
+     number, 0 or more (or blank)."; price -1 → "Price must be 0 or more."
+   - **`<StaffGateNotice>` verified by fault injection** — temporarily forcing
+     `requireStaffPage()` to return `{ ok: false }` renders "We couldn't verify
+     your access" with Try again / Sign in again, session intact, no redirect.
+     Injection reverted immediately; `lib/staff-auth.ts` is unchanged in git.
+   - **`searchBooksAction` (staff-gated) works** — "the pragmatic programmer"
+     returned two real Google Books results with ISBNs.
+   - **Product D verified too** (same session, also never browser-tested with
+     staff auth): the title picker lists the catalog and a generate run produced
+     all three sections — Instagram, newsletter, shelf card — with no markdown
+     asterisks and no console errors.
+
+   Zero console errors across every tab.
 
 ---
 
