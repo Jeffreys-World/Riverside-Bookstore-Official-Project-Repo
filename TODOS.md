@@ -1,5 +1,43 @@
 # TODOS
 
+## /qa pass 2 (2026-08-29 pm): 3 issues, all fixed, health 98 → 100
+
+**What:** second full-app pass, aimed at what the morning pass didn't touch — the two
+slide-over drawers, the account page's five tabs, the nav dropdowns, the cart's own
+controls, plus a regression check on the card-interaction change from earlier that day.
+Report: `.gstack/qa-reports/qa-report-localhost-3000-2026-08-29-pm.md`.
+
+- **Drawers declared a dialog contract they didn't implement (Med, a11y)** — cart and
+  product drawers both carry `role="dialog" aria-modal="true"`, but Escape did nothing,
+  focus never entered on open, Tab walked out into the nav behind, and while closed they
+  kept "Close cart", "Go to checkout" and "Close product details" focusable inside
+  `aria-hidden="true"`. New `components/use-modal-drawer.ts` handles all four for both
+  (`d47d981`). The nav dropdowns already closed on Escape, so the drawers were the
+  outlier, not the convention.
+- **Reward Tiers said "points to go" with no number (Med, content)** — the expression
+  producing the count had been deleted from the JSX, so a customer with 133 points saw
+  the bare phrase three times on the one page meant to show progress. Restored via
+  `pointsToGoLabel()` in `types/schema.ts` (`f138486`), 5 regression cases (`e02c912`).
+- **Account tablists had no roving tabindex or arrow keys (Low, a11y)** — Product C's
+  identical widget already did. Shared `moveTab()` brings them in line (`68610cd`).
+
+**Held up:** the morning's card change (Add-to-cart doesn't open the drawer; card body
+does), nav dropdowns incl. Escape and outside-click, cart stepper bounds and empty state,
+all five account panels with real data, Blind Date correctly disabled below its cost,
+Product C's FAQ + events + tablist keyboard, mobile 375px, all 8 routes 200 with zero
+console errors. 109 tests pass, `tsc` + `eslint` + `next build` clean.
+
+### Still open
+
+Nothing new from this pass. Carried forward: migrations `0037` and `0038` still need
+their production DB apply, and merchandise images stay Lorem Picsum until `0038` lands.
+
+One thing noted but not filed: the card title button added on 2026-08-29 measures
+40×25 px at 375px wide — clears WCAG 2.5.8 (24×24), not 2.5.5 (44×44). The effective
+pointer target is the whole card, which is still clickable, so it was left alone.
+
+---
+
 ## /qa pass (2026-08-29): 5 issues, all 5 fixed, health 93 → 100
 
 **What:** full-app QA + adversarial stress pass against localhost:3000. Report:
