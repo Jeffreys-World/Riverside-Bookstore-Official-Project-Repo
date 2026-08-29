@@ -102,7 +102,18 @@ export type CheckoutResult =
 export async function checkoutAction(input: unknown): Promise<CheckoutResult> {
   const parsed = checkoutRequestSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, message: "Please check your cart, customer ID, and pickup time, then try again." };
+    // Lead with the field-level sentence the schema already wrote ("Choose
+    // a pickup date today or later.") instead of collapsing every failure
+    // into one generic line that doesn't say what to change. Found by /qa
+    // on 2026-08-29: a past pickup date reported only the generic text.
+    const detail = parsed.error.issues[0]?.message;
+    return {
+      ok: false,
+      message:
+        detail && !/^(Required|Invalid)$/i.test(detail)
+          ? detail
+          : "Please check your cart, customer ID, and pickup time, then try again.",
+    };
   }
   const { customer_id: passedId, items, pickup_date, pickup_window } = parsed.data;
 
