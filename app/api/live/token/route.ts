@@ -20,11 +20,17 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import { NextResponse } from "next/server";
 import { isSameOriginRequest } from "@/lib/same-origin";
+import { callerKey, createRateLimiter } from "@/lib/rate-limit";
 
 // TODO: verify against https://ai.google.dev/gemini-api/docs/live-api
 // before shipping — Live API model names change frequently. Confirm the
 // current native-audio-capable Live model name and set it here or via env.
 const LIVE_MODEL = process.env.GEMINI_LIVE_MODEL ?? "gemini-2.5-flash-native-audio-preview-12-2025";
+
+// A real voice session needs one token. Ten a minute leaves room for
+// retries and a couple of tabs while still stopping a loop from running up
+// the Gemini bill on the store's key.
+const tokenRateLimiter = createRateLimiter({ limit: 10, windowMs: 60_000 });
 
 const TOKEN_EXPIRE_MINUTES = 30; // how long the token can be used to send messages
 const NEW_SESSION_EXPIRE_MINUTES = 1; // how long the token can be used to START a session
@@ -37,6 +43,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not allowed from this origin." }, { status: 403 });
   }
 
+  const limit = tokenRateLimiter.check(callerKey(request));
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Too many voice sessions started just now. Wait a moment and try again." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } }
+    );
+  }
+
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
@@ -45,9 +59,9 @@ export async function POST(request: Request) {
     );
   }
 
-  // Same-origin is enforced above. Per-caller auth and rate limiting are
-  // still open (TODOS.md): the kiosk is deliberately pre-auth, so the
-  // remaining exposure is a first-party page minting tokens in a loop.
+  // Same-origin and per-IP rate limiting are both enforced above. Каller
+  // identity stays the documented pre-auth kiosk model — a kiosk has no
+  // browser session to check.
   let responseModalities: Modality[] = [Modality.AUDIO];
   try {
     const body = await request.json().catch(() => ({}));

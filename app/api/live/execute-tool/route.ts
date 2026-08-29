@@ -26,6 +26,12 @@ import { getServiceRoleClient } from "@/lib/supabase-server";
 import { isMutatingTool, type MutatingToolName } from "@/lib/live-tools";
 import { isSameOriginRequest } from "@/lib/same-origin";
 import { friendlyDbError } from "@/lib/db-errors";
+import { callerKey, createRateLimiter } from "@/lib/rate-limit";
+
+// Each call can move stock_quantity and reward_points. Twenty a minute is
+// far beyond any real kiosk conversation and still bounds how fast a loop
+// could drain a title.
+const executeRateLimiter = createRateLimiter({ limit: 20, windowMs: 60_000 });
 
 interface ExecuteToolRequestBody {
   tool: string;
@@ -40,6 +46,14 @@ export async function POST(request: Request) {
   // 2026-08-29).
   if (!isSameOriginRequest(request)) {
     return NextResponse.json({ error: "Not allowed from this origin." }, { status: 403 });
+  }
+
+  const limit = executeRateLimiter.check(callerKey(request));
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests just now. Wait a moment and try again." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } }
+    );
   }
 
   const body = (await request.json().catch(() => null)) as
