@@ -25,6 +25,7 @@ import {
 } from "@/lib/inventory";
 import { formatEventTimestamp } from "@/types/schema";
 import { STORE_HOURS, STORE_POLICIES } from "@/lib/store-info";
+import { stripMarkdownEmphasis } from "@/lib/markdown";
 
 const SYSTEM_INSTRUCTION = `You are Riverside Books' customer support assistant.
 
@@ -241,7 +242,14 @@ export async function askSupportChatbotAction(question: string): Promise<Support
     }
 
     return {
-      answer: response.text ?? "Sorry, I couldn't come up with an answer just now.",
+      // The chat bubble is plain text, so Gemini's markdown emphasis
+      // renders as literal asterisks ("Yes, *1984* is in stock") —
+      // exactly the ISSUE-002 defect the marketing generator already
+      // strips (lib/marketing-parse.ts). Found in Product C by /qa on
+      // 2026-08-29.
+      answer: stripMarkdownEmphasis(
+        response.text ?? "Sorry, I couldn't come up with an answer just now."
+      ),
       books: dedupeBooks(matchedBooks),
     };
   } catch (err) {
