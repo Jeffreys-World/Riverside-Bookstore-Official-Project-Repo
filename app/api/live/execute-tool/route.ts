@@ -24,6 +24,7 @@ import { NextResponse } from "next/server";
 import { createPreorderRequestSchema, type OrderStatus } from "@/types/schema";
 import { getServiceRoleClient } from "@/lib/supabase-server";
 import { isMutatingTool, type MutatingToolName } from "@/lib/live-tools";
+import { isSameOriginRequest } from "@/lib/same-origin";
 
 interface ExecuteToolRequestBody {
   tool: string;
@@ -31,6 +32,15 @@ interface ExecuteToolRequestBody {
 }
 
 export async function POST(request: Request) {
+  // Server Actions get Next's same-origin enforcement for free; a route
+  // handler does not. Without this, an unauthenticated cross-origin POST
+  // reached create_preorder through the service-role client and could
+  // drain stock_quantity for any known cust_XXXXX (found by /qa on
+  // 2026-08-29).
+  if (!isSameOriginRequest(request)) {
+    return NextResponse.json({ error: "Not allowed from this origin." }, { status: 403 });
+  }
+
   const body = (await request.json().catch(() => null)) as
     | ExecuteToolRequestBody
     | null;

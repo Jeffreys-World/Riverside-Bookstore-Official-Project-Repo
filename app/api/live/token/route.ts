@@ -19,6 +19,7 @@
 
 import { GoogleGenAI, Modality } from "@google/genai";
 import { NextResponse } from "next/server";
+import { isSameOriginRequest } from "@/lib/same-origin";
 
 // TODO: verify against https://ai.google.dev/gemini-api/docs/live-api
 // before shipping — Live API model names change frequently. Confirm the
@@ -29,6 +30,13 @@ const TOKEN_EXPIRE_MINUTES = 30; // how long the token can be used to send messa
 const NEW_SESSION_EXPIRE_MINUTES = 1; // how long the token can be used to START a session
 
 export async function POST(request: Request) {
+  // This route spends the store's paid GOOGLE_API_KEY, so it must only
+  // answer our own pages. Without this it minted Live tokens for any
+  // caller on the internet (found by /qa on 2026-08-29).
+  if (!isSameOriginRequest(request)) {
+    return NextResponse.json({ error: "Not allowed from this origin." }, { status: 403 });
+  }
+
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
@@ -37,10 +45,9 @@ export async function POST(request: Request) {
     );
   }
 
-  // TODO (per product): add your own auth/rate-limit check here before
-  // minting a token — e.g. verify a Supabase session for Product A's
-  // kiosk, or a staff-only check for Product B. This scaffold does not
-  // include per-product auth since that's product-specific.
+  // Same-origin is enforced above. Per-caller auth and rate limiting are
+  // still open (TODOS.md): the kiosk is deliberately pre-auth, so the
+  // remaining exposure is a first-party page minting tokens in a loop.
   let responseModalities: Modality[] = [Modality.AUDIO];
   try {
     const body = await request.json().catch(() => ({}));
