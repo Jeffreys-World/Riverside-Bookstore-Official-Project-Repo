@@ -46,11 +46,11 @@ describe("order quantity bounds", () => {
 
   it("still refuses zero, negative and fractional quantities", () => {
     expect(checkout(0).success).toBe(false);
-    expect(checkout(-3).success).toBe(false);
     expect(checkout(1.5).success).toBe(false);
-    expect(checkout(-3).success === false && checkout(-3).error.issues[0]?.message).toMatch(
-      /at least 1/i
-    );
+
+    const negative = checkout(-3);
+    expect(negative.success).toBe(false);
+    expect(negative.success === false && negative.error.issues[0]?.message).toMatch(/at least 1/i);
   });
 
   it("applies the same bounds to the kiosk create_preorder route", () => {
