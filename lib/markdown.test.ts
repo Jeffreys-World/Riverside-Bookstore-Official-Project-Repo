@@ -83,3 +83,29 @@ describe("stripMarkdownEmphasis — literal asterisks", () => {
     );
   });
 });
+
+// Regression: ISSUE-003 — Product C's chat bubble rendered Gemini's emphasis
+// literally ("Yes, *1984* by George Orwell is in stock now for $17").
+// stripMarkdownEmphasis existed but was wired into the marketing generator
+// only; app/product-c/actions.ts now runs the answer through it.
+// Found by /qa on 2026-08-29
+// Report: .gstack/qa-reports/qa-report-localhost-3000-2026-08-29.md
+describe("stripMarkdownEmphasis — chatbot answers", () => {
+  it("strips emphasis around a title mid-sentence", () => {
+    expect(
+      stripMarkdownEmphasis("Yes, *1984* by George Orwell is in stock now for $17.")
+    ).toBe("Yes, 1984 by George Orwell is in stock now for $17.");
+  });
+
+  it("strips emphasis around an event name followed by punctuation", () => {
+    expect(
+      stripMarkdownEmphasis("Our next event is *An Evening with Kazuo Ishiguro*, on September 12.")
+    ).toBe("Our next event is An Evening with Kazuo Ishiguro, on September 12.");
+  });
+
+  it("leaves a price or shelf code with an asterisk alone", () => {
+    expect(stripMarkdownEmphasis("$17.00* while supplies last")).toBe(
+      "$17.00* while supplies last"
+    );
+  });
+});
