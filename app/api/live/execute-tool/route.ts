@@ -25,6 +25,7 @@ import { createPreorderRequestSchema, type OrderStatus } from "@/types/schema";
 import { getServiceRoleClient } from "@/lib/supabase-server";
 import { isMutatingTool, type MutatingToolName } from "@/lib/live-tools";
 import { isSameOriginRequest } from "@/lib/same-origin";
+import { friendlyDbError } from "@/lib/db-errors";
 
 interface ExecuteToolRequestBody {
   tool: string;
@@ -89,10 +90,11 @@ async function createPreorder(rawArgs: unknown) {
   }
   const { customer_id, isbn, quantity } = parsed.data;
 
-  // TODO: add the caller's own auth check here (e.g. verify this
-  // customer_id matches an authenticated session) before executing —
-  // this scaffold validates shape but not caller identity, since that
-  // depends on Product A's auth setup.
+  // Caller identity is the documented pre-auth kiosk model: knowing the
+  // cust_XXXXX is the credential. The same-origin check on POST above is
+  // what keeps that from being an open endpoint. Product A's own
+  // (session-first) resolution lives in lib/customer-session.ts and
+  // deliberately doesn't apply here — a kiosk has no browser session.
 
   const supabase = getServiceRoleClient();
 
@@ -111,9 +113,30 @@ async function createPreorder(rawArgs: unknown) {
     // when stock is insufficient — surface that distinctly so the voice
     // UI can say "that title just sold out" instead of a generic error.
     const outOfStock = error.message?.includes("INSUFFICIENT_STOCK");
+    if (outOfStock) {
+      return NextResponse.json(
+        { error: "insufficient_stock", message: "That title doesn't have enough copies left." },
+        { status: 409 }
+      );
+    }
+
+    // Anything else is mapped, not echoed. This used to return
+    // error.message verbatim, which handed the caller the raw Postgres
+    // text — table and constraint names included (found by /qa on
+    // 2026-08-29). Every other surface in the app already routes DB
+    // failures through friendlyDbError; the raw text stays in the
+    // server log where it's useful.
+    console.error(
+      `create_preorder failed via execute-tool [${error.code ?? "?"}]: ${error.message}`
+    );
     return NextResponse.json(
-      { error: outOfStock ? "insufficient_stock" : "create_preorder_failed", message: error.message },
-      { status: outOfStock ? 409 : 500 }
+      {
+        error: "create_preorder_failed",
+        message: friendlyDbError(error, {
+          "23503": "We couldn't find that customer ID.",
+        }),
+      },
+      { status: 500 }
     );
   }
 
