@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useProductDrawer } from "./product-drawer-provider";
+import { useModalDrawer } from "./use-modal-drawer";
 import { useCart } from "./cart-provider";
 import { StampBadge, type StampTone } from "./stamp-badge";
 import { CardImage } from "./card-image";
@@ -15,8 +16,10 @@ export function ProductDrawer() {
   const [justAdded, setJustAdded] = useState(false);
 
   const isOpen = product !== null;
+  // Same dialog contract as the cart drawer — see use-modal-drawer.ts.
+  const panelRef = useModalDrawer<HTMLElement>(isOpen, close);
   // Gifts aren't part of pre-order (browse-only, CLAUDE.md), so
-  // "Reserve"/"Pre-Order" — the book fulfillment badge's language — would
+  // "Reserve"/"Pre-Order" â the book fulfillment badge's language â would
   // be misleading here; gifts get plain in-stock/out-of-stock wording
   // instead, matching gift-card.tsx's badge.
   const badge: { label: string; tone: StampTone } | null =
@@ -56,6 +59,7 @@ export function ProductDrawer() {
         }`}
       />
       <aside
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={product ? product.title : "Product details"}
@@ -71,7 +75,7 @@ export function ProductDrawer() {
             aria-label="Close product details"
             className="min-h-[44px] min-w-[44px] rounded-md text-ink/60 transition-transform duration-150 hover:scale-125 hover:text-ink"
           >
-            ✕
+            â
           </button>
         </div>
 
@@ -122,11 +126,11 @@ export function ProductDrawer() {
                   disabled={!orderable || atMax}
                   className="mt-6 min-h-[44px] w-full rounded-md bg-accent px-6 py-2 font-medium text-paper transition-transform duration-150 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
                 >
-                  {!orderable ? "Ask a bookseller" : atMax ? "Max in cart" : justAdded ? "Added ✓" : "Add to cart"}
+                  {!orderable ? "Ask a bookseller" : atMax ? "Max in cart" : justAdded ? "Added â" : "Add to cart"}
                 </button>
                 {!orderable && (
                   <p className="mt-2 text-xs text-ink/50">
-                    This title isn&apos;t currently on the shelf — a bookseller can check stock in person.
+                    This title isn&apos;t currently on the shelf â a bookseller can check stock in person.
                   </p>
                 )}
               </>
@@ -146,7 +150,7 @@ export function ProductDrawer() {
                   </div>
                 </dl>
                 <p className="mt-6 rounded-md border border-ink/10 bg-surface p-3 text-sm text-ink/70">
-                  In-store only — cards and gifts aren&apos;t part of online pre-order. Ask a bookseller to
+                  In-store only â cards and gifts aren&apos;t part of online pre-order. Ask a bookseller to
                   hold one at the register.
                 </p>
               </>

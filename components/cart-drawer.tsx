@@ -2,11 +2,15 @@
 
 import Link from "next/link";
 import { useCart } from "./cart-provider";
+import { useModalDrawer } from "./use-modal-drawer";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
 export function CartDrawer() {
   const { items, isOpen, subtotal, close, removeItem, setQuantity } = useCart();
+  // Escape to close, focus in on open and back to the trigger on close,
+  // Tab kept inside, and inert while closed — see use-modal-drawer.ts.
+  const panelRef = useModalDrawer<HTMLElement>(isOpen, close);
 
   return (
     <>
@@ -18,6 +22,7 @@ export function CartDrawer() {
         }`}
       />
       <aside
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Shopping cart"
@@ -34,7 +39,7 @@ export function CartDrawer() {
             aria-label="Close cart"
             className="min-h-[44px] min-w-[44px] rounded-md text-ink/60 transition-transform duration-150 hover:scale-125 hover:text-ink"
           >
-            ✕
+            â
           </button>
         </div>
 
@@ -80,7 +85,7 @@ export function CartDrawer() {
                           aria-label={`Decrease quantity of ${item.book_title}`}
                           className="flex min-h-[44px] min-w-[44px] items-center justify-center text-ink transition-transform duration-150 hover:scale-125 disabled:opacity-30 disabled:hover:scale-100"
                         >
-                          −
+                          â
                         </button>
                         <span
                           id={`qty-${item.isbn}`}
@@ -118,7 +123,7 @@ export function CartDrawer() {
             <span className="text-ink/70">Subtotal</span>
             <span className="font-mono text-base text-ink">{currencyFormatter.format(subtotal)}</span>
           </div>
-          <p className="mt-1 text-xs text-ink/50">Pay in person at pickup — nothing is charged online.</p>
+          <p className="mt-1 text-xs text-ink/50">Pay in person at pickup â nothing is charged online.</p>
           <Link
             href="/product-a/checkout"
             onClick={close}
