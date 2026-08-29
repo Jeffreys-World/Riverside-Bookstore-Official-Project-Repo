@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MutableRefObject,
+} from "react";
 // useFormState, not React 19's useActionState — this app is on React
 // 18.3 with Next 14, where the hook still lives in react-dom.
 import { useFormState } from "react-dom";
@@ -39,6 +47,7 @@ const ACCOUNT_TABS = [
   { key: "orders", label: "Order History" },
 ] as const;
 type AccountTabKey = (typeof ACCOUNT_TABS)[number]["key"];
+const ACCOUNT_TAB_KEYS = ACCOUNT_TABS.map((t) => t.key);
 
 // The signed-out screen leads with these two tabs so a first-time visitor
 // sees "Create account" as a peer of "Sign in", not a secondary button.
@@ -49,6 +58,7 @@ const AUTH_TABS = [
   { key: "signup", label: "Create account" },
 ] as const;
 type AuthTabKey = (typeof AUTH_TABS)[number]["key"];
+const AUTH_TAB_KEYS = AUTH_TABS.map((t) => t.key);
 
 // Loyalty points have no anon-safe Realtime path today: `customers` is
 // deliberately excluded from an open anon SELECT policy (0002's reasoning
@@ -96,6 +106,8 @@ export function AccountView({
   const [activeTab, setActiveTab] = useState<AccountTabKey>("points");
   const [authTab, setAuthTab] = useState<AuthTabKey>("signin");
   const router = useRouter();
+  const accountTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const authTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   // The embedded tabs post to the *Inline* auth actions, which return an
   // error instead of redirecting to /product-a/login|signup — a typo here
   // shouldn't move the visitor off the account page they opened.
@@ -107,6 +119,32 @@ export function AccountView({
     customerSignUpInlineAction,
     {}
   );
+
+  // Arrow-key navigation is the expected interaction for role="tablist",
+  // and Product C's Support Center tabs already work this way. These two
+  // tablists announced the role without honouring it: no roving tabindex
+  // (all five tabs sat in the tab order) and arrow keys did nothing.
+  // Found by /qa on 2026-08-29.
+  function moveTab<K extends string>(
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+    keys: readonly K[],
+    current: K,
+    select: (key: K) => void,
+    refs: MutableRefObject<Record<string, HTMLButtonElement | null>>
+  ) {
+    const i = keys.indexOf(current);
+    let next = i;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (i + 1) % keys.length;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (i - 1 + keys.length) % keys.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = keys.length - 1;
+    else return;
+    event.preventDefault();
+    const nextKey = keys[next];
+    if (nextKey === undefined) return;
+    select(nextKey);
+    refs.current[nextKey]?.focus();
+  }
 
   // Resolve the account: server prefers the session, falls back to a
   // client-passed cust_XXXXX. `passedId` is only meaningful when signed
@@ -233,10 +271,15 @@ export function AccountView({
             {AUTH_TABS.map((tab) => (
               <button
                 key={tab.key}
+                ref={(el) => {
+                  authTabRefs.current[tab.key] = el;
+                }}
                 type="button"
                 role="tab"
                 aria-selected={authTab === tab.key}
+                tabIndex={authTab === tab.key ? 0 : -1}
                 onClick={() => setAuthTab(tab.key)}
+                onKeyDown={(e) => moveTab(e, AUTH_TAB_KEYS, authTab, setAuthTab, authTabRefs)}
                 className={`min-h-[52px] flex-1 whitespace-nowrap border-b-2 px-4 py-4 text-base font-medium transition-transform duration-150 hover:scale-105 ${
                   authTab === tab.key
                     ? "border-accent text-ink"
@@ -463,10 +506,15 @@ export function AccountView({
           {ACCOUNT_TABS.map((tab) => (
             <button
               key={tab.key}
+              ref={(el) => {
+                accountTabRefs.current[tab.key] = el;
+              }}
               type="button"
               role="tab"
               aria-selected={activeTab === tab.key}
+              tabIndex={activeTab === tab.key ? 0 : -1}
               onClick={() => setActiveTab(tab.key)}
+              onKeyDown={(e) => moveTab(e, ACCOUNT_TAB_KEYS, activeTab, setActiveTab, accountTabRefs)}
               className={`min-h-[52px] flex-none whitespace-nowrap border-b-2 px-4 py-4 text-base font-medium transition-transform duration-150 hover:scale-105 sm:flex-1 ${
                 activeTab === tab.key
                   ? "border-accent text-ink"
