@@ -254,10 +254,26 @@ export const ORDER_STATUS_TONE: Record<
 // (create_preorder is the one mutating Live API tool — see lib/live-tools.ts)
 // ---------------------------------------------------------------------------
 
+/**
+ * One order line can't exceed this. Nothing in the shop stocks anywhere
+ * near it — the cap is there so an out-of-range number is caught here,
+ * with a sentence a customer can act on, instead of reaching Postgres and
+ * coming back as a 22003 integer overflow that the UI could only report
+ * as "something went wrong, please try again" (a retry that can never
+ * succeed). Found by /qa on 2026-08-29 via a tampered localStorage cart.
+ */
+export const MAX_ORDER_QUANTITY = 999;
+
+const orderQuantitySchema = z
+  .number({ invalid_type_error: "Quantity must be a whole number." })
+  .int("Quantity must be a whole number.")
+  .positive("Quantity must be at least 1.")
+  .max(MAX_ORDER_QUANTITY, `That's more copies than we can reserve at once (max ${MAX_ORDER_QUANTITY}).`);
+
 export const createPreorderRequestSchema = z.object({
   customer_id: z.string().regex(CUSTOMER_ID_REGEX),
   isbn: z.string().regex(ISBN13_REGEX),
-  quantity: z.number().int().positive(),
+  quantity: orderQuantitySchema,
 });
 export type CreatePreorderRequest = z.infer<typeof createPreorderRequestSchema>;
 
@@ -278,7 +294,7 @@ export const checkoutRequestSchema = z.object({
     .array(
       z.object({
         isbn: z.string().regex(ISBN13_REGEX),
-        quantity: z.number().int().positive(),
+        quantity: orderQuantitySchema,
       })
     )
     .min(1),
