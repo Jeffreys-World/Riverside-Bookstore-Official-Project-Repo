@@ -10,6 +10,7 @@ import {
   ORDER_STATUS_LABEL,
   ORDER_STATUS_TONE,
   REWARD_TIERS,
+  pointsToGoLabel,
   BLIND_DATE_POINTS_COST,
   type OrderStatus,
 } from "@/types/schema";
@@ -508,7 +509,7 @@ export function AccountView({
                     <p className="mt-1 text-xs text-ink/60">{tier.description}</p>
                     {!unlocked && (
                       <p className="mt-1 text-xs text-ink/60">
- points to go
+                        {pointsToGoLabel(tier.points, data.rewardPoints)}
                       </p>
                     )}
                   </div>

@@ -163,6 +163,20 @@ export interface Order {
 // discount-code system in this app, matching its pay-in-person model — so
 // this list is just what the account page shows as "unlocked"/"next".
 // ---------------------------------------------------------------------------
+/**
+ * "117 points to go" for a tier the customer hasn't reached. Pulled out of
+ * the account page's JSX because that's where it went wrong: the
+ * expression that produced the number was deleted at some point and the
+ * markup was left rendering a bare " points to go" with nothing in front
+ * of it, on every locked tier (found by /qa on 2026-08-29). A string this
+ * small is worth a unit test precisely because nothing else would catch
+ * that.
+ */
+export function pointsToGoLabel(tierPoints: number, balance: number): string {
+  const remaining = Math.max(0, Math.ceil(tierPoints - balance));
+  return `${remaining} ${remaining === 1 ? "point" : "points"} to go`;
+}
+
 export interface RewardTier {
   points: number;
   label: string;
