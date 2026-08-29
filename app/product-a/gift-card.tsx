@@ -1,5 +1,6 @@
 "use client";
 
+import type { MouseEvent } from "react";
 import { useProductDrawer } from "@/components/product-drawer-provider";
 import { StampBadge } from "@/components/stamp-badge";
 import { CardImage } from "@/components/card-image";
@@ -22,6 +23,12 @@ export function GiftCard(item: GiftCardProps) {
   const { open: openDrawer } = useProductDrawer();
   const badge = fulfillmentBadgeFor(item.status);
 
+  // Stops the card's own onClick from opening the drawer a second time.
+  function handleTitleClick(e: MouseEvent) {
+    e.stopPropagation();
+    handleOpenDetails();
+  }
+
   function handleOpenDetails() {
     openDrawer({
       kind: "gift",
@@ -35,23 +42,23 @@ export function GiftCard(item: GiftCardProps) {
     });
   }
 
+  // Same shape as BookCard: the card is the mouse affordance, the name is
+  // the real control. Keeps both catalog grids on one keyboard and
+  // screen-reader pattern rather than two.
   return (
-    <article
-      onClick={handleOpenDetails}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          handleOpenDetails();
-        }
-      }}
-      role="button"
-      tabIndex={0}
-      aria-label={`View details for ${item.item_name}`}
-      className="flex cursor-pointer flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface transition duration-150 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-lg"
-    >
+    <article className="flex cursor-pointer flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface transition duration-150 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-lg" onClick={handleOpenDetails}>
       <CardImage src={item.image_url} alt="" aspect="square" />
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <p className="text-ink">{item.item_name}</p>
+        <p className="text-ink">
+          <button
+            type="button"
+            onClick={handleTitleClick}
+            aria-label={`View details for ${item.item_name}`}
+            className="text-left hover:underline focus-visible:underline"
+          >
+            {item.item_name}
+          </button>
+        </p>
         <p className="text-xs capitalize text-ink/50">{item.category}</p>
         <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2">
           <span className="font-mono text-sm font-semibold text-gold">

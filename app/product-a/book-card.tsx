@@ -54,6 +54,13 @@ export function BookCard(book: BookCardProps) {
     setTimeout(() => setJustAdded(false), 1500);
   }
 
+  // The card's own onClick already opens the drawer; without stopping
+  // propagation here the title button would open it twice.
+  function handleTitleClick(e: MouseEvent) {
+    e.stopPropagation();
+    handleOpenDetails();
+  }
+
   function handleOpenDetails() {
     openDrawer({
       kind: "book",
@@ -69,24 +76,27 @@ export function BookCard(book: BookCardProps) {
     });
   }
 
+  // The card itself is a mouse affordance only — the real control is the
+  // title button below. This used to be <article role="button" tabIndex={0}>
+  // wrapping its own "Add to cart" button, which is invalid ARIA
+  // (interactive inside an interactive role): assistive tech saw one
+  // card-sized button that swallowed the real one. Found by /qa on
+  // 2026-08-29.
   return (
-    <article
-      onClick={handleOpenDetails}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          handleOpenDetails();
-        }
-      }}
-      role="button"
-      tabIndex={0}
-      aria-label={`View details for ${book.book_title}`}
-      className="flex cursor-pointer flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface transition duration-150 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-lg"
-    >
+    <article className="flex cursor-pointer flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface transition duration-150 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-lg" onClick={handleOpenDetails}>
       <CardImage src={book.cover_url} alt="" aspect="portrait" emptyLabel="No cover available" />
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-serif text-lg leading-snug text-ink">{book.book_title}</h3>
+          <h3 className="font-serif text-lg leading-snug text-ink">
+            <button
+              type="button"
+              onClick={handleTitleClick}
+              aria-label={`View details for ${book.book_title}`}
+              className="text-left hover:underline focus-visible:underline"
+            >
+              {book.book_title}
+            </button>
+          </h3>
         </div>
         <p className="text-sm text-ink/60">{book.author_name}</p>
         {book.description && (
