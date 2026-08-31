@@ -4,9 +4,15 @@ import { useState, type FormEvent } from "react";
 import { formatEventTimestamp } from "@/types/schema";
 import { generateMarketingContentAction, type MarketingContentResult } from "./actions";
 import { GeneratedImage } from "./generated-image";
+import { CopyButton } from "@/components/copy-button";
 import { useRotatingMessage } from "@/lib/use-rotating-message";
 
 const GENERATING_MESSAGES = ["Generating…", "Drafting your caption…", "Almost ready…"] as const;
+
+// Instagram truncates a caption past 2,200 characters. Shown as a count
+// rather than enforced: the model's captions land far under it, and silently
+// clipping staff's text would be worse than letting them see the number.
+const INSTAGRAM_CAPTION_LIMIT = 2200;
 
 interface BookRow {
   isbn: string;
@@ -207,23 +213,64 @@ export function ContentForm({
           </p>
         )}
         {result?.kind === "success" && (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-lg border border-ink/10 bg-surface p-4">
-              <h3 className="font-serif text-lg text-ink">Instagram</h3>
-              <p className="mt-1 whitespace-pre-wrap text-ink/80">{result.content.instagram}</p>
+          // DESIGN.md "Product D / D2". These four were one 4-up grid of
+          // identical bg-surface cards, which is why the newsletter blurb
+          // read as cramped — long-form prose in a quarter-width column.
+          // Each is now shaped like where it is going.
+          <div className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-3">
+              <div className="flex flex-col rounded-lg border border-ink/10 bg-surface p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-serif text-lg text-ink">Instagram</h3>
+                  <CopyButton text={result.content.instagram} label="Instagram caption" />
+                </div>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-ink/80">
+                  {result.content.instagram}
+                </p>
+                <p className="mt-auto pt-3 font-mono text-xs text-ink/50">
+                  {result.content.instagram.length.toLocaleString()} /{" "}
+                  {INSTAGRAM_CAPTION_LIMIT.toLocaleString()}
+                </p>
+              </div>
+
+              {/* D's signature moment: the thing it is actually writing.
+                  bg-paper rather than bg-surface and dashed gold rules so it
+                  reads as a card you would slot under a book on the shelf,
+                  not another panel in a dashboard. This is the one place in
+                  a dense staff tool where breaking the grid is earned, and
+                  the one screen where gold is spent. */}
+              <div className="flex flex-col rounded-lg border border-ink/10 bg-paper p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-serif text-lg text-ink">Staff pick card</h3>
+                  <CopyButton text={result.content.staffPickCard} label="staff pick card" />
+                </div>
+                <div className="mt-3 flex flex-1 flex-col justify-center border-y-2 border-dashed border-gold py-5 text-center">
+                  <p className="font-serif text-lg leading-snug text-ink">
+                    {result.content.staffPickCard}
+                  </p>
+                  <p className="mt-3 font-mono text-[10px] uppercase tracking-wide text-ink/50">
+                    Riverside Books
+                  </p>
+                </div>
+              </div>
+
+              <GeneratedImage
+                headline={result.content.staffPickCard || result.imageHeadlineFallback}
+                subtitle={result.imageSubtitle}
+              />
             </div>
+
+            {/* Full width: it is the only long-form prose of the four, and a
+                quarter-width column was the reason it read as cramped. */}
             <div className="rounded-lg border border-ink/10 bg-surface p-4">
-              <h3 className="font-serif text-lg text-ink">Newsletter</h3>
-              <p className="mt-1 whitespace-pre-wrap text-ink/80">{result.content.newsletter}</p>
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="font-serif text-lg text-ink">Newsletter</h3>
+                <CopyButton text={result.content.newsletter} label="newsletter blurb" />
+              </div>
+              <p className="mt-2 max-w-prose whitespace-pre-wrap text-ink/80">
+                {result.content.newsletter}
+              </p>
             </div>
-            <div className="rounded-lg border border-ink/10 bg-surface p-4">
-              <h3 className="font-serif text-lg text-ink">Staff pick card</h3>
-              <p className="mt-1 font-mono text-ink/80">{result.content.staffPickCard}</p>
-            </div>
-            <GeneratedImage
-              headline={result.content.staffPickCard || result.imageHeadlineFallback}
-              subtitle={result.imageSubtitle}
-            />
           </div>
         )}
       </div>
