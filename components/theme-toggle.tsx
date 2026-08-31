@@ -46,10 +46,37 @@ export function ThemeToggle() {
       }
       className="flex min-h-[48px] min-w-[48px] flex-none items-center justify-center rounded-md text-ink/70 transition-transform duration-150 hover:scale-125 hover:bg-field hover:text-ink"
     >
-      <span aria-hidden className="text-xl">
-        <span className="inline dark:hidden">🌙</span>
-        <span className="hidden dark:inline">☀️</span>
-      </span>
+      {/* Inline SVG rather than 🌙/☀️ emoji: an emoji renders in whatever
+          colour and shape the viewer's OS emoji font ships, so it ignored
+          the ink token entirely and looked different on every platform.
+          These inherit currentColor and sit in the same `inline dark:hidden`
+          / `hidden dark:inline` pair, so the CSS-at-first-paint behaviour
+          described above is unchanged. */}
+      <svg
+        aria-hidden
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="inline h-5 w-5 dark:hidden"
+      >
+        <path d="M20 13.5A8.5 8.5 0 0 1 10.5 4a8.5 8.5 0 1 0 9.5 9.5Z" />
+      </svg>
+      <svg
+        aria-hidden
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="hidden h-5 w-5 dark:inline"
+      >
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+      </svg>
     </button>
   );
 }

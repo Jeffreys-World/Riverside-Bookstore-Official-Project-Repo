@@ -58,14 +58,25 @@ function TriggerButton({
   );
 }
 
-// rounded-b-none: the persistent accent underline is `border-b-2`, and a
-// rounded bottom corner bends that 2px line up into a little cup at each end
-// (looked like a hand-drawn smile under every tab). Square the bottom so the
-// underline reads as a flat tab rule; keep the top corners rounded for the
-// hover shadow.
+// rounded-b-none: the underline is `border-b-2`, and a rounded bottom corner
+// bends that 2px line up into a little cup at each end (looked like a
+// hand-drawn smile under every tab). Square the bottom so the underline reads
+// as a flat tab rule; keep the top corners rounded for the hover shadow.
+//
+// The underline now carries the current-section state instead of painting
+// accent under every trigger at rest. Before, all five triggers held
+// `border-accent` permanently and "you are here" was signalled only by text
+// opacity (ink vs ink/60) — a 40% alpha shift on 14px text, which is close
+// to invisible next to five identical accent rules competing for the same
+// attention. Selected keeps the accent rule; the rest get a quiet neutral
+// one. Same selected/unselected treatment the Support Center tablist uses
+// (app/product-c/support-tabs.tsx), so the app's two tab-shaped navigations
+// finally agree.
 const TRIGGER_CLASS = (active: boolean) =>
-  `inline-block whitespace-nowrap rounded-md rounded-b-none border-b-2 border-accent px-3 py-3 text-sm font-medium transition-transform transition-colors duration-150 hover:scale-125 hover:shadow-sm ${
-    active ? "text-ink" : "text-ink/60 hover:text-ink"
+  `inline-block whitespace-nowrap rounded-md rounded-b-none border-b-2 px-3 py-3 text-sm transition-transform transition-colors duration-150 hover:scale-125 hover:shadow-sm ${
+    active
+      ? "border-accent font-semibold text-ink"
+      : "border-ink/15 font-medium text-ink/60 hover:border-ink/30 hover:text-ink"
   }`;
 
 export interface NavMenuItem {
@@ -111,6 +122,7 @@ export function NavMenu({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-current={active ? "page" : undefined}
         className={TRIGGER_CLASS(active)}
       >
         <TriggerButton label={label} active={active} open={open} />
@@ -171,6 +183,7 @@ export function NavPreviewMenu({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-current={active ? "page" : undefined}
         className={TRIGGER_CLASS(active)}
       >
         <TriggerButton label={label} active={active} open={open} />

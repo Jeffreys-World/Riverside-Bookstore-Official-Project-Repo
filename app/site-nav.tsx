@@ -109,9 +109,24 @@ export function SiteNav() {
         aria-label={`Open cart, ${count} item${count === 1 ? "" : "s"}`}
         className="relative flex min-h-[48px] min-w-[48px] flex-none items-center justify-center rounded-full border border-accent/30 bg-accent-soft text-ink transition-transform duration-150 hover:scale-125 hover:border-accent hover:bg-accent hover:text-paper"
       >
-        <span aria-hidden className="text-2xl">
-          🛒
-        </span>
+        {/* Inline SVG rather than a 🛒 emoji: the emoji rendered in the OS
+            emoji font's own colours, so it ignored the ink/paper tokens and
+            stayed multicoloured through the hover state that repaints this
+            button accent-on-paper. currentColor follows the button instead. */}
+        <svg
+          aria-hidden
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-5 w-5"
+        >
+          <path d="M2.5 3h2l2.2 10.4a1.6 1.6 0 0 0 1.6 1.3h7.9a1.6 1.6 0 0 0 1.6-1.3L19.5 7H5.4" />
+          <circle cx="9.5" cy="19" r="1.4" />
+          <circle cx="16.5" cy="19" r="1.4" />
+        </svg>
         {count > 0 && (
           <span className="absolute -right-1 -top-1 min-w-[1.25rem] rounded-full border-2 border-surface bg-claret px-1 py-0.5 text-center font-mono text-[11px] font-bold leading-none text-paper">
             {count}
