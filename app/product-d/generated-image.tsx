@@ -1,30 +1,15 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { paletteFor } from "@/lib/brand-palette";
 
 const SIZE = 1080; // square, matches a standard social post canvas.
 
-// Same hex values as tailwind.config.ts's brand palette — canvas can't
-// read CSS custom properties, so these are duplicated here rather than
-// pulled from a shared source. Each entry pairs a background with the
-// foreground color that reads clearly on it (light text on the two dark
-// backgrounds, dark ink text on the three light/warm ones).
-const PALETTE: Array<{ bg: string; fg: string; footer: string }> = [
-  { bg: "#3F6C51", fg: "#F6F1E4", footer: "#E4EDE7" }, // accent
-  { bg: "#1B2E28", fg: "#F6F1E4", footer: "#B08D3F" }, // ink
-  { bg: "#B08D3F", fg: "#1B2E28", footer: "#F6F1E4" }, // gold
-  { bg: "#7A2E2E", fg: "#F7E9E9", footer: "#F6F1E4" }, // claret
-  { bg: "#EFE7D3", fg: "#1B2E28", footer: "#3F6C51" }, // surface
-];
-
-// Deterministic, not random — the same headline always produces the same
-// card, so regenerating content for the same book/event looks consistent
-// rather than shuffling colors on every render.
-function paletteFor(seed: string) {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) | 0;
-  return PALETTE[Math.abs(hash) % PALETTE.length]!;
-}
+// The palette and its deterministic seeding moved to lib/brand-palette.ts.
+// Canvas still cannot read CSS custom properties, so the hex values are
+// still duplicated from globals.css somewhere — but now in one place that
+// lib/brand-palette.test.ts holds against the :root block, instead of an
+// inline copy that had already drifted to the pre-contrast-fix gold.
 
 function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
