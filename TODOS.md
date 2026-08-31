@@ -1,5 +1,44 @@
 # TODOS
 
+## /design-review (2026-08-30): 14 findings, 10 fixed, 4 deferred
+
+**What:** first rendered design audit of the public surfaces, calibrated against the
+DESIGN.md rewritten the same day. Report:
+`~/.gstack/projects/Jeffreys-World-GitHub/designs/design-audit-20260830/design-audit-riverside-books.md`
+
+Fixed in five commits (`1f4bb84`, `72fa9bb`, `8ee2025`, `89290e1`, `4dc3120`): chatbot
+empty state and question echo, chat answer line breaks, gold rationed 61 → 5 elements,
+nav current-section state plus `aria-current`, emoji icons replaced with inline SVG,
+heading structure, list semantics, duplicated copy.
+
+Deferred, carried below:
+
+- **No search and no genre filter anywhere (High, feature not styling)** — 54 items in
+  one flat scroll; no `[role=search]` on any route, and the Books dropdown is a
+  description plus a browse link. The original build spec listed catalog search and
+  genre filter as Must-have. Trunk test "How can I search?" fails on every page.
+- **`CardImage` has no hanging-image state (Med)** — it covers "no URL" and "URL that
+  404s", but the seeded `picsum.photos` URLs *hang*: 28 images were still
+  `complete: false` after networkidle, and during that window a card shows neither
+  image nor branded placeholder, just an empty box. `onError` fires eventually, slowly.
+  Separate from ISSUE-005's unapplied migration, and would still bite any slow or
+  unreachable image host in production.
+- **The placeholder wall (Med, needs a product decision)** — the branded placeholder is
+  right for one missing image; 25 in a grid reads as a broken section and fills ~60% of
+  the storefront's height. DESIGN.md's Imagery rule settled "real art or the branded
+  placeholder"; it did not answer what a grid where *every* item lacks art should look
+  like.
+- **Products B and D unreviewed (staff-gated)** — skipped rather than passing a staff
+  credential through a chat transcript. Product D's DESIGN.md items stay open: no copy
+  buttons on generated output, four outputs rendered as four identical cards, and the
+  duplicated canvas palette still carrying pre-fix `#B08D3F` gold plus `claret` (the
+  error color) as a marketing background.
+- **AppleDouble junk untracked in the repo (Low)** — `._.DS_Store`, `._.env.local`,
+  `._design.md` (orphaned by the `design.md` → `DESIGN.md` rename),
+  `supabase/._.DS_Store`. Belong in `.gitignore`.
+
+---
+
 ## /qa pass 2 (2026-08-29 pm): 3 issues, all fixed, health 98 → 100
 
 **What:** second full-app pass, aimed at what the morning pass didn't touch — the two
