@@ -61,7 +61,7 @@ export function GiftCard(item: GiftCardProps) {
         </p>
         <p className="text-xs capitalize text-ink/50">{item.category}</p>
         <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2">
-          <span className="font-mono text-sm font-semibold text-gold">
+          <span className="font-mono text-sm font-semibold text-ink">
             {currencyFormatter.format(item.price)}
           </span>
           <StampBadge tone={item.status === "out_of_stock" ? "negative" : badge.tone}>

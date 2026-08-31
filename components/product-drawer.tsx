@@ -96,7 +96,7 @@ export function ProductDrawer() {
             </p>
 
             <div className="mt-4 flex items-center gap-3">
-              <span className="font-mono text-2xl font-semibold text-gold">
+              <span className="font-mono text-2xl font-semibold text-ink">
                 {currencyFormatter.format(product.price)}
               </span>
               {badge && <StampBadge tone={badge.tone}>{badge.label}</StampBadge>}

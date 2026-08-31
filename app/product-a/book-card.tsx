@@ -105,7 +105,7 @@ export function BookCard(book: BookCardProps) {
           </p>
         )}
         <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2">
-          <span className="font-mono text-base font-semibold text-gold">
+          <span className="font-mono text-base font-semibold text-ink">
             {currencyFormatter.format(book.price)}
           </span>
           <StampBadge tone={badge.tone}>{badge.label}</StampBadge>
