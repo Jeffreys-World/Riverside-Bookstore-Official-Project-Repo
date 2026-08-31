@@ -24,6 +24,7 @@ import {
   merchSearchOrFilter,
 } from "@/lib/inventory";
 import { formatEventTimestamp } from "@/types/schema";
+import type { StockStatus } from "@/types/schema";
 import { STORE_HOURS, STORE_POLICIES } from "@/lib/store-info";
 import { stripMarkdownEmphasis } from "@/lib/markdown";
 
@@ -59,10 +60,25 @@ you're having trouble checking that right now and suggest trying again
 shortly or asking a bookseller in person. Never say a title is out of
 stock, or that there are no upcoming events, because of a failed lookup.`;
 
+// Everything the chat result row renders. Author, price and status were
+// already computed by check_inventory below and then thrown away, leaving
+// the UI with a bare cover thumbnail and forcing the reader to take
+// availability from the model's prose. They ride along now so the stamp on
+// a chat answer derives from the catalogue query, never from what the model
+// wrote — see DESIGN.md, "Product C / C2". description + author_bio are
+// carried for the same reason BookCard carries them: opening the shared
+// product drawer needs them, and a drawer with an empty description is
+// worse than no link at all.
 export interface SupportChatBook {
   isbn: string;
   book_title: string;
+  author_name: string;
   cover_url: string | null;
+  price: number;
+  status: StockStatus;
+  stock_quantity: number | null;
+  description: string | null;
+  author_bio: string | null;
 }
 
 async function executeTool(
@@ -88,7 +104,9 @@ async function executeTool(
     const [booksRes, merchRes] = await Promise.all([
       supabase
         .from("books")
-        .select("isbn, book_title, author_name, stock_quantity, price, cover_url")
+        .select(
+          "isbn, book_title, author_name, stock_quantity, price, cover_url, description, author_bio"
+        )
         .or(bookSearchOrFilter(query))
         .limit(5),
       supabase
@@ -110,7 +128,20 @@ async function executeTool(
       bookRows.map((b) => ({ id: b.isbn, stockQuantity: b.stock_quantity }))
     );
     matchedBooks.push(
-      ...bookRows.map((b) => ({ isbn: b.isbn, book_title: b.book_title, cover_url: b.cover_url }))
+      ...bookRows.map((b, i) => ({
+        isbn: b.isbn,
+        book_title: b.book_title,
+        author_name: b.author_name,
+        cover_url: b.cover_url,
+        price: b.price,
+        // Same evaluateStockStatus pass the model's availability note is
+        // built from on the next lines, so the stamp and the prose can
+        // never disagree — they are two renderings of one query result.
+        status: bookStatus[i]?.status ?? "needs_attention",
+        stock_quantity: b.stock_quantity,
+        description: b.description,
+        author_bio: b.author_bio,
+      }))
     );
 
     const merchRows = merchRes.data ?? [];

@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { askSupportChatbotAction, type SupportChatBook } from "./actions";
 import { useRotatingMessage } from "@/lib/use-rotating-message";
+import { useProductDrawer } from "@/components/product-drawer-provider";
+import { StampBadge } from "@/components/stamp-badge";
+import { CardImage } from "@/components/card-image";
+import { fulfillmentBadgeFor } from "@/lib/inventory";
 
 interface Exchange {
   question: string;
@@ -28,30 +32,63 @@ const EXAMPLE_QUESTIONS = [
   "I liked Circe — what should I read next?",
 ] as const;
 
-function CoverThumb({ book }: { book: SupportChatBook }) {
-  const [errored, setErrored] = useState(false);
-  const showImage = book.cover_url && !errored;
+// Same local formatter the two catalogue cards declare (book-card.tsx,
+// gift-card.tsx). Matching the existing pattern rather than extracting a
+// shared one, which would be a refactor across three files.
+const currencyFormatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+
+// One declaration so the in-flight question and the settled one cannot
+// drift apart — they are the same utterance a few seconds apart, and
+// restyling it mid-wait reads as the page changing its mind.
+const QUESTION_CLASS = "ml-auto max-w-[85%] text-right text-sm text-ink/60";
+
+// DESIGN.md "Product C / C4". This was a 56x80 cover with a 10px truncated
+// title underneath — decoration pretending to be information, since a cover
+// is unreadable at that size and carried no author, price, or availability.
+// It is now a real result row that hands the reader the book: the same
+// CardImage, StampBadge and fulfillmentBadgeFor the catalogue cards use, so
+// a title stamped "Reserve" on the storefront is stamped "Reserve" here.
+function BookResult({ book }: { book: SupportChatBook }) {
+  const { open: openDrawer } = useProductDrawer();
+  const badge = fulfillmentBadgeFor(book.status);
+
   return (
-    <div className="w-14 flex-none">
-      {showImage ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={book.cover_url as string}
-          alt=""
-          loading="lazy"
-          onError={() => setErrored(true)}
-          className="h-20 w-14 rounded object-cover"
-        />
-      ) : (
-        <div
-          aria-hidden
-          className="flex h-20 w-14 items-center justify-center rounded bg-ink/5 text-[9px] text-ink/40"
-        >
-          No cover
-        </div>
-      )}
-      <p className="mt-1 truncate text-[10px] text-ink/60">{book.book_title}</p>
-    </div>
+    <li>
+      <button
+        type="button"
+        onClick={() =>
+          openDrawer({
+            kind: "book",
+            isbn: book.isbn,
+            title: book.book_title,
+            author: book.author_name,
+            coverUrl: book.cover_url,
+            description: book.description,
+            authorBio: book.author_bio,
+            price: book.price,
+            status: book.status,
+            stockQuantity: book.stock_quantity,
+          })
+        }
+        className="flex w-full items-center gap-3 rounded-lg border border-ink/10 bg-surface p-3 text-left transition-transform duration-150 hover:scale-[1.02] hover:border-ink/25"
+      >
+        <span className="w-16 flex-none overflow-hidden rounded">
+          <CardImage src={book.cover_url} alt="" aspect="portrait" emptyLabel="No cover" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-serif text-lg text-ink">{book.book_title}</span>
+          <span className="block truncate text-sm text-ink/60">{book.author_name}</span>
+          <span className="mt-1 flex flex-wrap items-center gap-2">
+            <span className="font-mono text-sm font-semibold text-ink">
+              {currencyFormatter.format(book.price)}
+            </span>
+            <StampBadge tone={book.status === "out_of_stock" ? "negative" : badge.tone}>
+              {book.status === "out_of_stock" ? "Out of stock" : badge.label}
+            </StampBadge>
+          </span>
+        </span>
+      </button>
+    </li>
   );
 }
 
@@ -132,23 +169,29 @@ export function ChatWidget() {
         className="max-h-[60vh] space-y-4 overflow-y-auto"
       >
         {history.map((ex, i) => (
-          <div key={i} className="space-y-1">
-            <p className="font-medium text-ink">{ex.question}</p>
+          <div key={i} className="space-y-2">
+            {/* DESIGN.md "Product C / C1". The emphasis used to run backwards
+                — the question you had just typed was bold ink and the answer
+                was quieter body text. The question recedes to the right, the
+                answer speaks in the store's serif behind an accent rule. */}
+            <p className={QUESTION_CLASS}>{ex.question}</p>
             {/* whitespace-pre-line because the model answers list-shaped
                 questions ("what are your hours?") with real newlines and
                 `* ` bullets. stripMarkdownEmphasis deliberately leaves those
                 bullets alone — Product D's captions need them verbatim — so
                 collapsing the newlines here rendered a three-line list as
                 one run-on sentence littered with asterisks. */}
-            <p className="whitespace-pre-line rounded-lg border border-ink/10 bg-surface p-3 text-ink/80">
+            <p className="whitespace-pre-line rounded-lg rounded-l-none border border-l-2 border-ink/10 border-l-accent bg-surface p-3 font-serif text-base text-ink">
               {ex.answer}
             </p>
             {ex.books.length > 0 && (
-              <div className="flex gap-3">
-                {ex.books.map((b) => (
-                  <CoverThumb key={b.isbn} book={b} />
+              // Capped at 3: check_inventory returns up to 5, and a wall of
+              // results turns an answer back into a search page.
+              <ul className="space-y-2">
+                {ex.books.slice(0, 3).map((b) => (
+                  <BookResult key={b.isbn} book={b} />
                 ))}
-              </div>
+              </ul>
             )}
           </div>
         ))}
@@ -158,7 +201,7 @@ export function ChatWidget() {
             will fill is already reserved — nothing shifts when it lands. */}
         {pendingQuestion !== null && (
           <div className="space-y-1">
-            <p className="font-medium text-ink">{pendingQuestion}</p>
+            <p className={QUESTION_CLASS}>{pendingQuestion}</p>
             <p
               aria-hidden="true"
               className="animate-pulse rounded-lg border border-dashed border-ink/25 bg-surface/50 p-3 text-ink/40"

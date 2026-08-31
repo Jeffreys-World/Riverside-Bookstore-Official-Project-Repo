@@ -266,8 +266,15 @@ emphasis is backwards. Invert it:
 ### C2. The answer is stamped
 
 Every answer that touches catalog stock carries a `StampBadge` derived from the
-**query result, not the model's prose**: `IN STOCK` (positive), `PRE-ORDER`
-(pending), `NOT IN CATALOGUE` (negative). No new primitives.
+**query result, not the model's prose**. No new primitives.
+
+The labels come from `fulfillmentBadgeFor()` — `Reserve` (positive) and
+`Pre-Order` (pending), with `Out of stock` (negative) for the out-of-stock case,
+exactly as `BookCard` renders them. An earlier draft of this document specified
+`IN STOCK` / `PRE-ORDER` / `NOT IN CATALOGUE`; that was written before the
+shipped vocabulary was checked, and inventing a second set of words for the same
+state is precisely the incoherence the stamp exists to prevent. A title stamped
+`Reserve` on the storefront is stamped `Reserve` in chat.
 
 Two reasons this is correct and not decoration:
 
@@ -390,3 +397,4 @@ this daily; every saved scroll is real.
 | 2026-08-30 | `claret` removed from the generated-image palette | It is the error color; marketing posts should not render in it. |
 | 2026-08-30 | Inter retained as body face despite being an overused default | Shipped across four products; the system's character lives in Fraunces. Recorded as a decision, not an oversight. |
 | 2026-08-30 | Stock photography ruled out suite-wide (ISSUE-005 direction) | Real art per item or the branded `CardImage` placeholder. Mismatched decorative photos read as bugs. |
+| 2026-08-30 | C1/C2/C4 implemented; C2's stamp labels corrected to `Reserve`/`Pre-Order` | The spec had invented `IN STOCK`/`NOT IN CATALOGUE` before the shipped vocabulary was checked. A second set of words for one state is the incoherence the stamp exists to prevent, so `fulfillmentBadgeFor()` wins. |
