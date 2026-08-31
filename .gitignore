@@ -19,6 +19,15 @@ next-env.d.ts
 
 # OS
 .DS_Store
+# AppleDouble sidecars. macOS writes a `._<name>` companion for every file it
+# touches on a non-HFS volume (a network share, a USB stick, this repo synced
+# from a Mac), so they appear next to real files — `._design.md` outlived the
+# design.md it shadowed. Never useful in a repo.
+._*
+# Windows equivalents, since this repo is also worked on from Windows.
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 # Supabase local dev
 /supabase/.branches
