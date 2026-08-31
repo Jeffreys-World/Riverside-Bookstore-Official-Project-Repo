@@ -1,5 +1,59 @@
 # TODOS
 
+## Next steps (as of 2026-08-31)
+
+Open work left by the 2026-08-30 design pass, roughly in the order it is worth doing.
+Everything above the line in the sections below is already shipped and pushed.
+
+1. **Look at Product D signed in as staff (do this first — it is unverified code).**
+   `12466f5` rewrote D's output panel (copy buttons, the shelf-card treatment, the
+   Instagram counter, the full-width newsletter) and **nobody has seen it render.**
+   `/product-d` is `is_staff()`-gated and the design pass deliberately did not route a
+   staff credential through a chat transcript, so it is covered only by tsc, eslint,
+   127 tests and a clean production build. Check: the copy buttons actually copy, the
+   dashed gold rules on the staff-pick card look like a shelf card rather than a
+   mistake, and the three-up grid holds at `lg`. Same visit answers Product B, which
+   has never been reviewed rendered at all.
+
+2. **Give `CardImage` a hanging-image state (Med).** It covers "no URL" and "URL that
+   404s" but not "URL that hangs" — the seeded `picsum.photos` rows left 28 images at
+   `complete: false` even after networkidle, and during that window a card shows
+   neither the image nor the branded placeholder, just an empty box at the reserved
+   aspect ratio. `onError` does fire, but slowly. This is independent of the seed data
+   and would bite any slow or unreachable image host in production. Likely shape: a
+   timeout that falls back to the placeholder, or a low-key loading treatment so the
+   box is never simply blank.
+
+3. **Apply migration `0038_clear_placeholder_stock_photos.sql` to prod.** Still not
+   applied. Until it is, all 28 merchandise rows point at `picsum.photos` and the
+   Cards & Gifts grid renders as a wall of placeholders. Steps are in the ISSUE-005
+   entry further down.
+
+4. **Decide what an all-placeholder grid should look like (Med, product call).** The
+   branded placeholder is right for one missing image; 25 of them in a grid reads as a
+   broken section and fills roughly 60% of the storefront's height. DESIGN.md's Imagery
+   rule settled "real art per item or the branded placeholder" — it did not answer the
+   every-item-missing case. Options: source real art for the merch lines, drop images
+   from browse-only merch and use a lighter text-first card, or vary the placeholder so
+   a grid of them does not read as one repeated failure.
+
+5. **Catalog search and genre filter (High, a feature not a styling fix).** 54 items in
+   one flat scroll, no `[role=search]` on any route, and the Books dropdown is a
+   description plus a browse link. The original build spec listed both as Must-have.
+   This is the one remaining trunk-test failure: "How can I search?" fails on every
+   page.
+
+6. **Decide whether component tests are wanted (small, but it is a fork).** Vitest runs
+   `environment: "node"` with pure-logic tests in `lib/` and `types/`, and
+   `@testing-library` is not installed, so the React behavior changed in `1f4bb84`
+   (the chat question echo) and `12466f5` (copy-to-clipboard, including its
+   insecure-origin fallback) has no regression test. Adding jsdom + testing-library is
+   bootstrap work with real upside now that two features have untested interaction
+   logic; skipping it is also defensible. It was deliberately not decided during the
+   design pass.
+
+---
+
 ## /design-review (2026-08-30): 14 findings, 10 fixed, 4 deferred
 
 **What:** first rendered design audit of the public surfaces, calibrated against the
@@ -29,13 +83,28 @@ Deferred, carried below:
   placeholder"; it did not answer what a grid where *every* item lacks art should look
   like.
 - **Products B and D unreviewed (staff-gated)** — skipped rather than passing a staff
-  credential through a chat transcript. Product D's DESIGN.md items stay open: no copy
-  buttons on generated output, four outputs rendered as four identical cards, and the
-  duplicated canvas palette still carrying pre-fix `#B08D3F` gold plus `claret` (the
-  error color) as a marketing background.
-- **AppleDouble junk untracked in the repo (Low)** — `._.DS_Store`, `._.env.local`,
-  `._design.md` (orphaned by the `design.md` → `DESIGN.md` rename),
-  `supabase/._.DS_Store`. Belong in `.gitignore`.
+  credential through a chat transcript. Still true for both as *rendered*; see next
+  step 1. Product D's DESIGN.md items themselves have since shipped — copy buttons and
+  the reshaped output panel in `12466f5`, the single palette source in `173b8b0`.
+- ~~**AppleDouble junk untracked in the repo (Low)**~~ — fixed 2026-08-30 in `7565c20`:
+  `._*` plus the Windows sidecars added to `.gitignore`. The files themselves are still
+  on disk, just ignored.
+
+### Follow-on work, 2026-08-30/31
+
+DESIGN.md's Product C and D chapters were specified during `/design-consultation` and
+confirmed unbuilt by this review. Both have since been implemented:
+
+- `a252940` — C1/C2/C4: speaker shape, answers stamped from the catalogue query rather
+  than the model's prose, and result rows that open the product drawer. C2's labels
+  were corrected to the shipped `Reserve`/`Pre-Order` vocabulary; the spec had invented
+  `IN STOCK`/`NOT IN CATALOGUE` before the real components were checked.
+- `173b8b0` — D3: the third copy of the brand palette moved to `lib/brand-palette.ts`,
+  now guarded by tests that parse `globals.css` and assert the hexes match. Suite
+  109 → 127. Caught a shipped contrast failure on the way: a paper footer on the gold
+  fill measured 2.77:1, under the 3:1 large-text floor.
+- `12466f5` — D1/D2: copy affordances on every generated output, and the four outputs
+  reshaped as their destinations. **Not visually verified** — see next step 1.
 
 ---
 
