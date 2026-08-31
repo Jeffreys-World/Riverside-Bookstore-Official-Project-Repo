@@ -18,6 +18,16 @@ const CHECKING_MESSAGES = ["Checking…", "Looking that up…", "Almost there…
 // against Gemini's token limit with the field already cleared.
 const MAX_QUESTION_LENGTH = 500;
 
+// Shown only on the empty state. Each one is answerable from the grounding
+// the action already has (catalogue, upcoming events, store info), so a
+// first-time visitor's first question cannot miss.
+const EXAMPLE_QUESTIONS = [
+  "Is Atomic Habits in stock?",
+  "What are your store hours?",
+  "What author events are coming up?",
+  "I liked Circe — what should I read next?",
+] as const;
+
 function CoverThumb({ book }: { book: SupportChatBook }) {
   const [errored, setErrored] = useState(false);
   const showImage = book.cover_url && !errored;
@@ -49,8 +59,14 @@ export function ChatWidget() {
   const [question, setQuestion] = useState("");
   const [history, setHistory] = useState<Exchange[]>([]);
   const [pending, setPending] = useState(false);
+  // The question currently in flight. Held separately from `history` so it
+  // can be echoed the instant it is submitted: an exchange only enters
+  // `history` once the answer returns, so without this the typed question
+  // vanished for the whole 20-30s lookup and the log sat empty.
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
   const progressMessage = useRotatingMessage(CHECKING_MESSAGES, pending);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Bring the newest exchange (or the pending indicator) into view after
   // each change — the log is a fixed-height scroll area now, so without
@@ -77,6 +93,7 @@ export function ChatWidget() {
     }
 
     setPending(true);
+    setPendingQuestion(q);
     setQuestion("");
     try {
       const result = await askSupportChatbotAction(q);
@@ -98,7 +115,13 @@ export function ChatWidget() {
       setQuestion(q);
     } finally {
       setPending(false);
+      setPendingQuestion(null);
     }
+  }
+
+  function askExample(example: string) {
+    setQuestion(example);
+    inputRef.current?.focus();
   }
 
   return (
@@ -123,18 +146,58 @@ export function ChatWidget() {
             )}
           </div>
         ))}
+
+        {/* Echoed the moment the question is submitted, with a placeholder
+            in the answer's own geometry so the stamp-shaped gap the answer
+            will fill is already reserved — nothing shifts when it lands. */}
+        {pendingQuestion !== null && (
+          <div className="space-y-1">
+            <p className="font-medium text-ink">{pendingQuestion}</p>
+            <p
+              aria-hidden="true"
+              className="animate-pulse rounded-lg border border-dashed border-ink/25 bg-surface/50 p-3 text-ink/40"
+            >
+              {progressMessage}
+            </p>
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
+
+      {/* Without this the tab opened onto an input and 500px of nothing —
+          no indication of what the bookseller can actually be asked. */}
+      {history.length === 0 && pendingQuestion === null && (
+        <div className="rounded-lg border border-dashed border-ink/20 p-5">
+          <p className="font-serif text-lg text-ink">Ask the bookseller</p>
+          <p className="mt-1 text-sm text-ink/60">
+            Stock, prices, store hours, upcoming events, or a recommendation — answers come
+            straight from the catalogue. Looking something up takes a few seconds.
+          </p>
+          <ul className="mt-4 flex flex-wrap gap-2">
+            {EXAMPLE_QUESTIONS.map((example) => (
+              <li key={example}>
+                <button
+                  type="button"
+                  onClick={() => askExample(example)}
+                  className="min-h-[44px] rounded-md border border-ink/20 bg-surface px-3 py-2 text-left text-sm text-ink transition-transform duration-150 hover:scale-105 hover:border-accent"
+                >
+                  {example}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* The rotating copy is decorative — it changes every 4s purely so
           a 20-30s wait looks alive, and any live region it sat in
           (role="log" before, its own polite region after) re-announced
-          every rotation. aria-hidden stops that; the sr-only region below
-          says it once when the wait starts, and the answer arriving in
-          role="log" announces the end. */}
-      <p aria-hidden="true" className="mt-2 min-h-[1.25rem] text-sm text-ink/50">
-        {pending ? progressMessage : ""}
-      </p>
+          every rotation. It now rides on the aria-hidden placeholder above,
+          inside the answer's own shape, rather than as a loose line of grey
+          text under the log. This sr-only region still says it once when the
+          wait starts, and the answer arriving in role="log" announces the
+          end. */}
       <p aria-live="polite" className="sr-only">
         {pending ? "Checking the catalogue — this can take a few seconds." : ""}
       </p>
@@ -145,6 +208,7 @@ export function ChatWidget() {
         </label>
         <input
           id="question"
+          ref={inputRef}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           maxLength={MAX_QUESTION_LENGTH}
