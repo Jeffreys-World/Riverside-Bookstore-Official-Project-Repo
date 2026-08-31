@@ -134,7 +134,13 @@ export function ChatWidget() {
         {history.map((ex, i) => (
           <div key={i} className="space-y-1">
             <p className="font-medium text-ink">{ex.question}</p>
-            <p className="rounded-lg border border-ink/10 bg-surface p-3 text-ink/80">
+            {/* whitespace-pre-line because the model answers list-shaped
+                questions ("what are your hours?") with real newlines and
+                `* ` bullets. stripMarkdownEmphasis deliberately leaves those
+                bullets alone — Product D's captions need them verbatim — so
+                collapsing the newlines here rendered a three-line list as
+                one run-on sentence littered with asterisks. */}
+            <p className="whitespace-pre-line rounded-lg border border-ink/10 bg-surface p-3 text-ink/80">
               {ex.answer}
             </p>
             {ex.books.length > 0 && (
