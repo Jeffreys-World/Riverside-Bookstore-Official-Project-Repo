@@ -49,7 +49,12 @@ export function GiftCard(item: GiftCardProps) {
     <article className="flex cursor-pointer flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface transition duration-150 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-lg" onClick={handleOpenDetails}>
       <CardImage src={item.image_url} alt="" aspect="square" />
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <p className="text-ink">
+        {/* h3, matching BookCard. The comment above claims both catalog
+            grids share one keyboard and screen-reader pattern, but this was
+            a <p> while BookCard used <h3>, so the merchandise grid had no
+            heading structure at all — 28 items a screen reader could not
+            navigate by heading. */}
+        <h3 className="font-serif text-lg leading-snug text-ink">
           <button
             type="button"
             onClick={handleTitleClick}
@@ -58,7 +63,7 @@ export function GiftCard(item: GiftCardProps) {
           >
             {item.item_name}
           </button>
-        </p>
+        </h3>
         <p className="text-xs capitalize text-ink/50">{item.category}</p>
         <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2">
           <span className="font-mono text-sm font-semibold text-ink">

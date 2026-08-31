@@ -78,7 +78,15 @@ export default async function ProductAPage({
             Couldn&apos;t load the catalog right now. Please try again shortly.
           </p>
         ) : books && books.length > 0 ? (
-          <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+          <section className="mt-8">
+            {/* The books grid had no section heading at all, so the outline
+                ran H1 straight into 26 book-title H3s while "Cards & Gifts"
+                sat below them as the page's only H2. sr-only when the
+                category filter has already made the H1 say "Books", so the
+                outline is H1 > H2 > H3 either way without showing the same
+                word twice. */}
+            <h2 className={`font-serif text-2xl text-ink ${showGifts ? "" : "sr-only"}`}>Books</h2>
+            <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
             {books.map((b) => (
               <BookCard
                 key={b.isbn}
@@ -93,7 +101,8 @@ export default async function ProductAPage({
                 status={flaggedBooks.find((f) => f.id === b.isbn)?.status ?? "needs_attention"}
               />
             ))}
-          </div>
+            </div>
+          </section>
         ) : (
           <p className="mt-8 rounded-lg border border-ink/10 bg-surface p-4 text-ink/70">
             No titles are in the catalog yet — check back soon.
@@ -102,7 +111,7 @@ export default async function ProductAPage({
 
       {showGifts && merchandise && merchandise.length > 0 && (
         <section className={showBooks ? "mt-16" : "mt-8"}>
-          <h2 className="font-serif text-xl text-ink">Cards &amp; Gifts</h2>
+          <h2 className="font-serif text-2xl text-ink">Cards &amp; Gifts</h2>
           <p className="mt-1 text-sm text-ink/60">
             In-store only — browse what&apos;s currently on the shelf.
           </p>

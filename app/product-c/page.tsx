@@ -24,8 +24,8 @@ export default async function ProductCPage() {
     <main className="mx-auto max-w-7xl px-6 py-16">
       <h1 className="font-serif text-3xl text-ink">Support Center</h1>
       <p className="mt-2 text-ink/70">
-        The most common questions are answered right here — ask the chatbot for anything else, like
-        checking a specific title or an order. For anything else,{" "}
+        The most common questions are answered right here. Ask the chatbot about a specific title,
+        your order, or what&apos;s on the shelf. To reach a person,{" "}
         <Link href="/product-c/contact" className="text-accent underline-offset-2 hover:underline">
           contact us
         </Link>

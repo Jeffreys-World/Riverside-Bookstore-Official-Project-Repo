@@ -100,7 +100,21 @@ export function SupportTabs({ events, eventsError }: { events: EventRow[]; event
           </div>
           <div className="rounded-lg border border-ink/10 bg-surface p-4">
             <h2 className="font-serif text-lg text-ink">Policies</h2>
-            <p className="mt-1 whitespace-pre-line text-sm text-ink/70">{STORE_POLICIES}</p>
+            {/* A real <ul>. This was one <p> with whitespace-pre-line, so
+                three policies rendered as a paragraph with literal "- "
+                hyphens standing in for bullets and no list semantics. The
+                STORE_POLICIES constant keeps its "- " prefixes because
+                app/product-c/actions.ts:50 feeds it to the model verbatim as
+                grounding — the markers are stripped here at the render site
+                instead. */}
+            <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-ink/70 marker:text-accent">
+              {STORE_POLICIES.split("\n")
+                .map((line) => line.replace(/^-\s*/, "").trim())
+                .filter(Boolean)
+                .map((policy) => (
+                  <li key={policy}>{policy}</li>
+                ))}
+            </ul>
           </div>
         </div>
 
