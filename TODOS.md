@@ -518,6 +518,11 @@ typographic placeholder, and the event detail hero routes through it. Migration
 (see the sweep entry at the top of this file for the apply steps). Once applied, every
 placeholder shows the branded panel; real staff-entered URLs are left intact.
 
+**Direction decided 2026-08-30** by `/design-consultation` — option 2, branded placeholder,
+now written into `DESIGN.md` under "Imagery" as a suite-wide rule: real art per item or the
+`CardImage` placeholder, no stock photography, no hand-rolled grey boxes. Remaining work on
+this issue is purely the prod migration apply, not a design question.
+
 ---
 
 ## Give "Add a Book" validation errors field-level detail

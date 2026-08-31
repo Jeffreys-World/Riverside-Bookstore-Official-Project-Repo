@@ -71,3 +71,16 @@ Key routing rules:
 - Save progress → invoke /context-save
 - Resume context → invoke /context-restore
 - Author a backlog-ready spec/issue → invoke /spec
+
+## Design System
+
+Always read `DESIGN.md` before making any visual or UI decision. Fonts, colors,
+spacing, motion, the `StampBadge` signature element, and the per-product direction
+for C and D are all defined there. Do not deviate without explicit user approval.
+In QA mode, flag any code that does not match `DESIGN.md`.
+
+Two standing rules worth repeating here because they are easy to violate:
+- Colors are CSS variables consumed via `rgb(var(--color-x) / <alpha-value>)`.
+  Never add `dark:` variants at a call site — change the variable in `globals.css`.
+- Every catalog image goes through `components/card-image.tsx`. Never hand-roll a
+  grey placeholder box.
